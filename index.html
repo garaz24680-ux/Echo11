@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Echo11</title>
+    <title>Clean TypeScript Site</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,9 +11,7 @@
     <button id="myBtn">Click Me</button>
     <p id="msg"></p>
 
-    <!-- Point to the JavaScript file GitHub will compile for you -->
-    <!-- Add "defer" so the script waits for the button to load -->
-<script src="main.js" defer></script>
-
+    <!-- type="module" ensures the script safely waits for the HTML elements to load -->
+    <script type="module" src="main.js"></script>
 </body>
 </html>

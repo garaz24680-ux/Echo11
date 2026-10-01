@@ -1,5 +1,5 @@
-const button = document.getElementById('myBtn') as HTMLButtonElement;
-const msg = document.getElementById('msg') as HTMLParagraphElement;
+const button = document.getElementById('myBtn');
+const msg = document.getElementById('msg');
 
 if (button && msg) {
     button.addEventListener('click', () => {
