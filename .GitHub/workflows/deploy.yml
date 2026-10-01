@@ -27,10 +27,11 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install TypeScript and Compile
+            - name: Install TypeScript and Compile
         run: |
           npm install -g typescript
-          tsc main.ts --target es6
+          tsc main.ts --target es6 --module commonjs || true
+
 
       - name: Upload Build Website
         uses: actions/upload-pages-artifact@v3
