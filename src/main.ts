@@ -1,7 +1,6 @@
 import { renderLogin } from './components/login';
 import { renderDashboard } from './components/dashboard';
 
-// Simple application state tracker
 export const AppState = {
   isAuthenticated: false,
   currentUser: '',
@@ -10,21 +9,25 @@ export const AppState = {
   login(provider: string) {
     this.isAuthenticated = true;
     this.currentUser = provider;
-    initApp(); // Redraw screens automatically
+    initApp(); 
   },
   
   addNewApp() {
-    const newAppNumber = this.apps.length + 1;
-    this.apps.push(`APP ${newAppNumber}`);
+    this.apps.push(`APP ${this.apps.length + 1}`);
     initApp();
   }
 };
 
 function initApp() {
   const container = document.getElementById("app");
-  if (!container) return;
   
-  container.innerHTML = ""; // Clear active viewport
+  // Safety check: if the app div isn't ready, wait a fraction of a second and retry
+  if (!container) {
+    setTimeout(initApp, 50);
+    return;
+  }
+  
+  container.innerHTML = ""; 
   
   if (!AppState.isAuthenticated) {
     renderLogin(container);
@@ -33,5 +36,9 @@ function initApp() {
   }
 }
 
-// Kick off screen renderer on boot
-window.addEventListener('DOMContentLoaded', initApp);
+// Ensures the code execution triggers safely regardless of browser loading speed
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
