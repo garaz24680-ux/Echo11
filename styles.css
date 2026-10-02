@@ -11,4 +11,6 @@ header{
     height: 60px;
     font-family: 'Audiowide';
     font-size: 3rem;
+    min-width: 100%;
+    top: 0;
 }
