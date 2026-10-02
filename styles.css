@@ -5,10 +5,10 @@ body{
 }
 
 header{
-    background-color: skyblue;
+    background-color: rgb(46, 73, 83);
     color: black;
     text-align: center;
     height: 50px;
-    font-family: "Michroma", Georgia, serif;
-  font-size: 4rem;
+    font-family: "Audiowide", Georgia, serif;
+  font-size: 3rem;
 }
