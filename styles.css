@@ -1,3 +1,9 @@
-text{
-    color: blue
+body{
+    color:white;
+    background-color: blue;
+}
+
+header{
+    background-color: skyblue;
+    color: black;
 }
