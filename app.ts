@@ -1,4 +1,4 @@
-import "./styles.css";
+import "styles.css";
 
 type Project = {
   id: string;
