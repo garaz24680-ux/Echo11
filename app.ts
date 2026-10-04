@@ -458,13 +458,23 @@ function renderEditor() {
                 Live Preview
               </div>
 
-              <button
-                class="refresh-button"
-                id="refreshPreview"
-                title="Refresh preview"
-              >
-                ↻
-              </button>
+              <div class="preview-actions">
+  <button
+    class="preview-action-button"
+    id="fullscreenPreview"
+    title="Fullscreen preview"
+  >
+    ⛶
+  </button>
+
+  <button
+    class="refresh-button"
+    id="refreshPreview"
+    title="Refresh preview"
+  >
+    ↻
+  </button>
+</div>
             </div>
 
             <iframe
@@ -592,6 +602,18 @@ function wireEvents() {
 
   document.querySelector("#refreshPreview")
     ?.addEventListener("click", updatePreview);
+    document.querySelector("#fullscreenPreview")
+  ?.addEventListener("click", () => {
+    const preview = document.querySelector<HTMLIFrameElement>("#preview");
+
+    if (!preview) return;
+
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      preview.requestFullscreen();
+    }
+  });
 
   document.querySelector("#newProject")
     ?.addEventListener("click", askForNewProject);
