@@ -744,3 +744,63 @@ button {
   height: 100vh;
   background: white;
 }
+/* =========================
+   FILE CONTROLS
+   ========================= */
+
+.add-file-button,
+.delete-file-button,
+.rename-file-button {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  margin: 0 2px;
+  padding: 0;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #161b22;
+  color: #8b949e;
+  cursor: pointer;
+}
+
+.add-file-button {
+  font-size: 18px;
+}
+
+.delete-file-button {
+  font-size: 18px;
+}
+
+.rename-file-button {
+  font-size: 14px;
+}
+
+.add-file-button:hover {
+  border-color: #388bfd;
+  color: #58a6ff;
+}
+
+.delete-file-button:hover {
+  border-color: #f85149;
+  color: #ff7b72;
+}
+
+.rename-file-button:hover {
+  border-color: #388bfd;
+  color: #58a6ff;
+}
+
+/* Make lots of file tabs scroll instead of breaking the editor */
+
+.tabs {
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.tab {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
