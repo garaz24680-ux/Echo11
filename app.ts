@@ -571,7 +571,7 @@ function renderHome() {
 
         <div class="brand">
 
-          <img class="brand-logo" src="/Echo11/logo.png" alt="Echo11">
+          <img class="brand-logo" src="Echo11.png" alt="Echo11">
 
           <div>
             <strong>Echo11</strong>
