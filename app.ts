@@ -571,8 +571,7 @@ function renderHome() {
 
         <div class="brand">
 
-          <div class="brand-mark">
-            E
+          <div type="image/png" href="/Echo11/logo.png>
           </div>
 
           <div>
