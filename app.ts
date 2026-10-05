@@ -47,8 +47,20 @@ type Project = {
   id: string;
   name: string;
   files: ProjectFile[];
+  folders: string[];
   updatedAt: number;
 };
+
+type TreeSelection =
+  | {
+      type: "file";
+      path: string;
+    }
+  | {
+      type: "folder";
+      path: string;
+    }
+  | null;
 
 
 /* =========================
@@ -64,28 +76,30 @@ const STORAGE_KEY =
    ========================= */
 
 const starterProject: Project = {
-
   id: "welcome",
 
   name: "Welcome",
 
-  files: [
+  folders: [],
 
+  files: [
     {
       name: "index.html",
 
       content: `<main class="hero">
   <p class="eyebrow">ECHO11</p>
+
   <h1>Build something.</h1>
+
   <p class="subtitle">
     Edit the code and watch your preview update instantly.
   </p>
+
   <button id="demoButton">
     Click me
   </button>
 </main>`
     },
-
 
     {
       name: "styles.css",
@@ -144,7 +158,6 @@ button:hover {
 }`
     },
 
-
     {
       name: "script.js",
 
@@ -152,11 +165,9 @@ button:hover {
   alert("Hello from Echo11!");
 });`
     }
-
   ],
 
   updatedAt: Date.now()
-
 };
 
 
@@ -178,10 +189,16 @@ let currentPage:
   "home" | "editor" =
   "home";
 
-
 let editorView:
   EditorView | null =
   null;
+
+let selectedTreeItem:
+  TreeSelection =
+  null;
+
+const expandedFolders =
+  new Set<string>();
 
 
 /* =========================
@@ -195,123 +212,209 @@ const app =
 
 
 /* =========================
+   PATH HELPERS
+   ========================= */
+
+function normalizePath(
+  value: string
+): string {
+  return value
+    .replaceAll("\\", "/")
+    .split("/")
+    .map(part => part.trim())
+    .filter(
+      part =>
+        part !== "" &&
+        part !== "."
+    )
+    .filter(
+      part =>
+        part !== ".."
+    )
+    .join("/");
+}
+
+
+function getParentPath(
+  path: string
+): string {
+  const normalized =
+    normalizePath(path);
+
+  const index =
+    normalized.lastIndexOf("/");
+
+  if (index === -1) {
+    return "";
+  }
+
+  return normalized.slice(
+    0,
+    index
+  );
+}
+
+
+function getBaseName(
+  path: string
+): string {
+  const normalized =
+    normalizePath(path);
+
+  const index =
+    normalized.lastIndexOf("/");
+
+  return index === -1
+    ? normalized
+    : normalized.slice(index + 1);
+}
+
+
+function joinPath(
+  parent: string,
+  name: string
+): string {
+  const cleanName =
+    normalizePath(name);
+
+  if (!parent) {
+    return cleanName;
+  }
+
+  return `${normalizePath(parent)}/${cleanName}`;
+}
+
+
+function isInsideFolder(
+  path: string,
+  folder: string
+): boolean {
+  const normalizedPath =
+    normalizePath(path);
+
+  const normalizedFolder =
+    normalizePath(folder);
+
+  return (
+    normalizedPath === normalizedFolder ||
+    normalizedPath.startsWith(
+      `${normalizedFolder}/`
+    )
+  );
+}
+
+
+/* =========================
    LOAD PROJECTS
    ========================= */
 
 function loadProjects(): Project[] {
-
   try {
-
     const saved =
       localStorage.getItem(
         STORAGE_KEY
       );
 
-
     if (saved) {
-
       const parsed =
         JSON.parse(saved);
-
 
       if (
         Array.isArray(parsed) &&
         parsed.length
       ) {
-
         return parsed.map(
           (project: any): Project => {
+            const files: ProjectFile[] =
+              Array.isArray(project.files)
+                ? project.files
+                    .filter(
+                      (file: any) =>
+                        file &&
+                        typeof file.name === "string"
+                    )
+                    .map(
+                      (file: any) => ({
+                        name:
+                          normalizePath(
+                            file.name
+                          ),
+                        content:
+                          typeof file.content === "string"
+                            ? file.content
+                            : ""
+                      })
+                    )
+                    .filter(
+                      file =>
+                        file.name.length > 0
+                    )
+                : [
+                    {
+                      name: "index.html",
+                      content:
+                        project.html ?? ""
+                    },
+                    {
+                      name: "styles.css",
+                      content:
+                        project.css ?? ""
+                    },
+                    {
+                      name: "script.js",
+                      content:
+                        project.js ?? ""
+                    }
+                  ];
 
-            /*
-             * New format
-             */
+            const folders: string[] =
+              Array.isArray(project.folders)
+                ? project.folders
+                    .filter(
+                      (folder: any) =>
+                        typeof folder === "string"
+                    )
+                    .map(
+                      (folder: string) =>
+                        normalizePath(folder)
+                    )
+                    .filter(
+                      folder =>
+                        folder.length > 0
+                    )
+                : [];
 
-            if (
-              Array.isArray(
-                project.files
-              )
-            ) {
-
-              return {
-                id:
-                  project.id,
-
-                name:
-                  project.name,
-
-                files:
-                  project.files,
-
-                updatedAt:
-                  project.updatedAt ??
-                  Date.now()
-              };
-
-            }
-
-
-            /*
-             * Convert old Echo11 projects
-             */
-
-            return {
-
+            const upgradedProject: Project = {
               id:
-                project.id,
+                project.id ??
+                `${Date.now()}-${Math.random()}`,
 
               name:
-                project.name,
+                typeof project.name === "string"
+                  ? project.name
+                  : "Untitled Project",
 
-              files: [
+              files,
 
-                {
-                  name:
-                    "index.html",
-
-                  content:
-                    project.html ??
-                    ""
-                },
-
-                {
-                  name:
-                    "styles.css",
-
-                  content:
-                    project.css ??
-                    ""
-                },
-
-                {
-                  name:
-                    "script.js",
-
-                  content:
-                    project.js ??
-                    ""
-                }
-
-              ],
+              folders,
 
               updatedAt:
                 project.updatedAt ??
                 Date.now()
-
             };
 
+            addMissingParentFolders(
+              upgradedProject
+            );
+
+            return upgradedProject;
           }
         );
-
       }
-
     }
-
   } catch {
-
     // Fall back to starter project.
-
   }
-
 
   localStorage.setItem(
     STORAGE_KEY,
@@ -320,10 +423,42 @@ function loadProjects(): Project[] {
     ])
   );
 
-
   return [
     starterProject
   ];
+}
+
+
+/* =========================
+   FOLDER MIGRATION
+   ========================= */
+
+function addMissingParentFolders(
+  project: Project
+) {
+  const folders =
+    new Set(
+      project.folders
+    );
+
+  for (
+    const file of project.files
+  ) {
+    let parent =
+      getParentPath(
+        file.name
+      );
+
+    while (parent) {
+      folders.add(parent);
+      parent =
+        getParentPath(parent);
+    }
+  }
+
+  project.folders =
+    Array.from(folders)
+      .sort();
 }
 
 
@@ -332,14 +467,12 @@ function loadProjects(): Project[] {
    ========================= */
 
 function saveProjects() {
-
   localStorage.setItem(
     STORAGE_KEY,
     JSON.stringify(
       projects
     )
   );
-
 }
 
 
@@ -349,34 +482,28 @@ function saveProjects() {
 
 function getActiveProject():
   Project | undefined {
-
   return projects.find(
     project =>
       project.id ===
       activeProjectId
   );
-
 }
 
 
 function getActiveFile():
   ProjectFile | undefined {
-
   const project =
     getActiveProject();
-
 
   if (!project) {
     return undefined;
   }
-
 
   return project.files.find(
     file =>
       file.name ===
       activeFileName
   );
-
 }
 
 
@@ -386,8 +513,7 @@ function getActiveFile():
 
 function escapeHtml(
   value: string
-) {
-
+): string {
   return value
     .replaceAll(
       "&",
@@ -404,8 +530,11 @@ function escapeHtml(
     .replaceAll(
       '"',
       "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
     );
-
 }
 
 
@@ -414,34 +543,19 @@ function escapeHtml(
    ========================= */
 
 function render() {
-
-  /*
-   * Destroy the old CodeMirror
-   * instance before replacing HTML.
-   */
-
   if (editorView) {
-
     editorView.destroy();
-
     editorView = null;
-
   }
-
 
   if (
     currentPage ===
     "home"
   ) {
-
     renderHome();
-
   } else {
-
     renderEditor();
-
   }
-
 }
 
 
@@ -450,9 +564,7 @@ function render() {
    ========================= */
 
 function renderHome() {
-
   app.innerHTML = `
-
     <div class="home-shell">
 
       <header class="home-topbar">
@@ -464,19 +576,11 @@ function renderHome() {
           </div>
 
           <div>
-
-            <strong>
-              Echo11
-            </strong>
-
-            <span>
-              Code Studio
-            </span>
-
+            <strong>Echo11</strong>
+            <span>Code Studio</span>
           </div>
 
         </div>
-
 
         <button
           class="home-new-button"
@@ -496,18 +600,15 @@ function renderHome() {
             WELCOME TO ECHO11
           </p>
 
-
           <h1>
             Build something.
           </h1>
-
 
           <p>
             A coding workspace for creating
             projects, editing files, and
             seeing your work come to life.
           </p>
-
 
           <div class="home-actions">
 
@@ -517,7 +618,6 @@ function renderHome() {
             >
               + New Project
             </button>
-
 
             <button
               class="secondary-button"
@@ -547,17 +647,13 @@ function renderHome() {
 
             </div>
 
-
             <span>
-
               ${projects.length}
-
               project${
                 projects.length === 1
                   ? ""
                   : "s"
               }
-
             </span>
 
           </div>
@@ -569,58 +665,50 @@ function renderHome() {
               projects
                 .map(
                   project => `
+                    <button
+                      class="home-project-card"
+                      data-home-project="${escapeHtml(
+                        project.id
+                      )}"
+                    >
 
-              <button
-                class="home-project-card"
-                data-home-project="${escapeHtml(
-                  project.id
-                )}"
-              >
+                      <div class="project-card-icon">
+                        &lt;/&gt;
+                      </div>
 
-                <div class="project-card-icon">
-                  &lt;/&gt;
-                </div>
+                      <div class="project-card-info">
 
+                        <strong>
+                          ${escapeHtml(
+                            project.name
+                          )}
+                        </strong>
 
-                <div class="project-card-info">
+                        <span>
+                          ${
+                            project.files.length
+                          }
+                          file${
+                            project.files.length === 1
+                              ? ""
+                              : "s"
+                          }
+                          • Updated
+                          ${
+                            new Date(
+                              project.updatedAt
+                            ).toLocaleDateString()
+                          }
+                        </span>
 
-                  <strong>
-                    ${escapeHtml(
-                      project.name
-                    )}
-                  </strong>
+                      </div>
 
+                      <span class="open-arrow">
+                        →
+                      </span>
 
-                  <span>
-
-                    ${project.files.length}
-
-                    file${
-                      project.files.length === 1
-                        ? ""
-                        : "s"
-                    }
-
-                    • Updated
-
-                    ${
-                      new Date(
-                        project.updatedAt
-                      ).toLocaleDateString()
-                    }
-
-                  </span>
-
-                </div>
-
-
-                <span class="open-arrow">
-                  →
-                </span>
-
-              </button>
-
-            `
+                    </button>
+                  `
                 )
                 .join("")
             }
@@ -652,11 +740,10 @@ function renderHome() {
         type="file"
         id="homeFileUpload"
         class="hidden-file-input"
-        accept=".html,.htm,.css,.js,.ts,.txt,.json"
+        accept=".html,.htm,.css,.js,.ts,.jsx,.tsx,.txt,.json"
       />
 
     </div>
-
   `;
 
 
@@ -687,13 +774,11 @@ function renderHome() {
     ?.addEventListener(
       "click",
       () => {
-
         document
           .querySelector<HTMLInputElement>(
             "#homeFileUpload"
           )
           ?.click();
-
       }
     );
 
@@ -714,37 +799,40 @@ function renderHome() {
     )
     .forEach(
       button => {
-
         button.addEventListener(
           "click",
           () => {
-
             activeProjectId =
               button.dataset
                 .homeProject!;
 
-
             const project =
               getActiveProject();
-
 
             activeFileName =
               project?.files[0]?.name ??
               "index.html";
 
+            selectedTreeItem =
+              activeFileName
+                ? {
+                    type: "file",
+                    path: activeFileName
+                  }
+                : null;
 
             currentPage =
               "editor";
 
+            expandParentsOfFile(
+              activeFileName
+            );
 
             render();
-
           }
         );
-
       }
     );
-
 }
 
 
@@ -753,42 +841,32 @@ function renderHome() {
    ========================= */
 
 function askForNewProject() {
-
   const name =
     prompt(
       "Project name:"
     );
 
-
-  if (
-    !name?.trim()
-  ) {
+  if (!name?.trim()) {
     return;
   }
-
 
   createProject(
     name
   );
-
 }
 
 
 function createProject(
   name: string
 ) {
-
   const cleanName =
     name.trim();
-
 
   if (!cleanName) {
     return;
   }
 
-
   const project: Project = {
-
     id:
       `${Date.now()}-${Math.random()
         .toString(36)
@@ -797,8 +875,9 @@ function createProject(
     name:
       cleanName,
 
-    files: [
+    folders: [],
 
+    files: [
       {
         name:
           "index.html",
@@ -814,7 +893,6 @@ function createProject(
   </p>
 </main>`
       },
-
 
       {
         name:
@@ -832,7 +910,6 @@ function createProject(
 }`
       },
 
-
       {
         name:
           "script.js",
@@ -842,12 +919,10 @@ function createProject(
   "Hello from ${cleanName}!"
 );`
       }
-
     ],
 
     updatedAt:
       Date.now()
-
   };
 
 
@@ -855,24 +930,342 @@ function createProject(
     project
   );
 
-
   activeProjectId =
     project.id;
-
 
   activeFileName =
     "index.html";
 
+  selectedTreeItem = {
+    type: "file",
+    path: "index.html"
+  };
 
   saveProjects();
-
 
   currentPage =
     "editor";
 
-
   render();
+}
 
+
+/* =========================
+   TREE HELPERS
+   ========================= */
+
+function getAllFolders(
+  project: Project
+): string[] {
+  const folders =
+    new Set<string>();
+
+  for (
+    const folder of project.folders
+  ) {
+    if (folder) {
+      folders.add(
+        normalizePath(folder)
+      );
+    }
+  }
+
+  for (
+    const file of project.files
+  ) {
+    let parent =
+      getParentPath(
+        file.name
+      );
+
+    while (parent) {
+      folders.add(parent);
+      parent =
+        getParentPath(parent);
+    }
+  }
+
+  return Array.from(folders)
+    .filter(Boolean)
+    .sort(
+      (a, b) =>
+        a.localeCompare(b)
+    );
+}
+
+
+function getDirectFolders(
+  project: Project,
+  parent: string
+): string[] {
+  return getAllFolders(project)
+    .filter(
+      folder =>
+        getParentPath(folder) ===
+        parent
+    );
+}
+
+
+function getDirectFiles(
+  project: Project,
+  parent: string
+): ProjectFile[] {
+  return project.files
+    .filter(
+      file =>
+        getParentPath(file.name) ===
+        parent
+    )
+    .sort(
+      (a, b) =>
+        a.name.localeCompare(
+          b.name
+        )
+    );
+}
+
+
+function expandParentsOfFile(
+  filePath: string
+) {
+  let parent =
+    getParentPath(filePath);
+
+  while (parent) {
+    expandedFolders.add(parent);
+    parent =
+      getParentPath(parent);
+  }
+}
+
+
+/* =========================
+   TREE HTML
+   ========================= */
+
+function renderFolderTree(
+  project: Project,
+  parent = ""
+): string {
+  const folders =
+    getDirectFolders(
+      project,
+      parent
+    );
+
+  const files =
+    getDirectFiles(
+      project,
+      parent
+    );
+
+  let html = "";
+
+  for (
+    const folder of folders
+  ) {
+    const expanded =
+      expandedFolders.has(
+        folder
+      );
+
+    const selected =
+      selectedTreeItem?.type ===
+        "folder" &&
+      selectedTreeItem.path ===
+        folder;
+
+    const name =
+      getBaseName(folder);
+
+    html += `
+      <div class="tree-folder">
+
+        <button
+          class="tree-row tree-folder-row ${
+            selected
+              ? "selected"
+              : ""
+          }"
+          data-folder="${escapeHtml(
+            folder
+          )}"
+          title="${escapeHtml(
+            folder
+          )}"
+        >
+
+          <span class="tree-indent">
+            ${getFolderIndent(
+              folder
+            )}
+          </span>
+
+          <span class="tree-chevron">
+            ${
+              expanded
+                ? "⌄"
+                : "›"
+            }
+          </span>
+
+          <span class="tree-icon">
+            ${
+              expanded
+                ? "📂"
+                : "📁"
+            }
+          </span>
+
+          <span class="tree-name">
+            ${escapeHtml(name)}
+          </span>
+
+        </button>
+
+        ${
+          expanded
+            ? `
+              <div class="tree-children">
+                ${renderFolderTree(
+                  project,
+                  folder
+                )}
+              </div>
+            `
+            : ""
+        }
+
+      </div>
+    `;
+  }
+
+  for (
+    const file of files
+  ) {
+    const selected =
+      selectedTreeItem?.type ===
+        "file" &&
+      selectedTreeItem.path ===
+        file.name;
+
+    html += `
+      <button
+        class="tree-row tree-file-row ${
+          selected
+            ? "selected"
+            : ""
+        }"
+        data-tree-file="${escapeHtml(
+          file.name
+        )}"
+        title="${escapeHtml(
+          file.name
+        )}"
+      >
+
+        <span class="tree-indent">
+          ${getFileIndent(
+            file.name
+          )}
+        </span>
+
+        <span class="tree-file-spacer"></span>
+
+        <span class="tree-icon">
+          ${getFileIcon(file.name)}
+        </span>
+
+        <span class="tree-name">
+          ${escapeHtml(
+            getBaseName(file.name)
+          )}
+        </span>
+
+      </button>
+    `;
+  }
+
+  return html;
+}
+
+
+function getFolderIndent(
+  path: string
+): string {
+  const depth =
+    path
+      .split("/")
+      .filter(Boolean)
+      .length - 1;
+
+  return Array.from({
+    length: Math.max(0, depth)
+  })
+    .map(
+      () =>
+        `<span class="indent-space"></span>`
+    )
+    .join("");
+}
+
+
+function getFileIndent(
+  path: string
+): string {
+  const depth =
+    path
+      .split("/")
+      .filter(Boolean)
+      .length - 1;
+
+  return Array.from({
+    length: Math.max(0, depth)
+  })
+    .map(
+      () =>
+        `<span class="indent-space"></span>`
+    )
+    .join("");
+}
+
+
+function getFileIcon(
+  filename: string
+): string {
+  const lower =
+    filename.toLowerCase();
+
+  if (
+    lower.endsWith(".html") ||
+    lower.endsWith(".htm")
+  ) {
+    return "🌐";
+  }
+
+  if (
+    lower.endsWith(".css")
+  ) {
+    return "🎨";
+  }
+
+  if (
+    lower.endsWith(".js") ||
+    lower.endsWith(".ts") ||
+    lower.endsWith(".jsx") ||
+    lower.endsWith(".tsx")
+  ) {
+    return "⚡";
+  }
+
+  if (
+    lower.endsWith(".json")
+  ) {
+    return "◈";
+  }
+
+  return "📄";
 }
 
 
@@ -881,32 +1274,69 @@ function createProject(
    ========================= */
 
 function createFile() {
-
   const project =
     getActiveProject();
-
 
   if (!project) {
     return;
   }
 
+  let parent = "";
+
+  if (
+    selectedTreeItem?.type ===
+    "folder"
+  ) {
+    parent =
+      selectedTreeItem.path;
+  } else if (
+    selectedTreeItem?.type ===
+    "file"
+  ) {
+    parent =
+      getParentPath(
+        selectedTreeItem.path
+      );
+  } else {
+    parent =
+      getParentPath(
+        activeFileName
+      );
+  }
 
   const name =
     prompt(
-      "File name:"
+      parent
+        ? `File name inside "${parent}":`
+        : "File name:"
     );
 
-
-  if (
-    !name?.trim()
-  ) {
+  if (!name?.trim()) {
     return;
   }
 
+  const cleanName =
+    normalizePath(name);
+
+  if (!cleanName) {
+    return;
+  }
+
+  if (
+    cleanName.includes("/")
+  ) {
+    alert(
+      "Please enter only a file name. Select a folder first if you want the file inside a folder."
+    );
+
+    return;
+  }
 
   const fileName =
-    name.trim();
-
+    joinPath(
+      parent,
+      cleanName
+    );
 
   const exists =
     project.files.some(
@@ -915,42 +1345,147 @@ function createFile() {
         fileName.toLowerCase()
     );
 
-
   if (exists) {
-
     alert(
       "A file with that name already exists."
     );
 
     return;
-
   }
 
-
   project.files.push({
-
     name:
       fileName,
 
     content:
       ""
-
   });
 
+  addMissingParentFolders(
+    project
+  );
 
   activeFileName =
     fileName;
 
+  selectedTreeItem = {
+    type: "file",
+    path: fileName
+  };
+
+  expandParentsOfFile(
+    fileName
+  );
 
   project.updatedAt =
     Date.now();
 
+  saveProjects();
+
+  render();
+}
+
+
+/* =========================
+   CREATE FOLDER
+   ========================= */
+
+function createFolder() {
+  const project =
+    getActiveProject();
+
+  if (!project) {
+    return;
+  }
+
+  let parent = "";
+
+  if (
+    selectedTreeItem?.type ===
+    "folder"
+  ) {
+    parent =
+      selectedTreeItem.path;
+  } else if (
+    selectedTreeItem?.type ===
+    "file"
+  ) {
+    parent =
+      getParentPath(
+        selectedTreeItem.path
+      );
+  }
+
+  const name =
+    prompt(
+      parent
+        ? `Folder name inside "${parent}":`
+        : "Folder name:"
+    );
+
+  if (!name?.trim()) {
+    return;
+  }
+
+  const cleanName =
+    normalizePath(name);
+
+  if (
+    !cleanName ||
+    cleanName.includes("/")
+  ) {
+    alert(
+      "Please enter only one folder name."
+    );
+
+    return;
+  }
+
+  const folderPath =
+    joinPath(
+      parent,
+      cleanName
+    );
+
+  const exists =
+    getAllFolders(project)
+      .some(
+        folder =>
+          folder.toLowerCase() ===
+          folderPath.toLowerCase()
+      );
+
+  if (exists) {
+    alert(
+      "A folder with that name already exists."
+    );
+
+    return;
+  }
+
+  project.folders.push(
+    folderPath
+  );
+
+  expandedFolders.add(
+    folderPath
+  );
+
+  if (parent) {
+    expandedFolders.add(parent);
+  }
+
+  selectedTreeItem = {
+    type: "folder",
+    path: folderPath
+  };
+
+  project.updatedAt =
+    Date.now();
 
   saveProjects();
 
-
   render();
-
 }
 
 
@@ -959,13 +1494,11 @@ function createFile() {
    ========================= */
 
 function deleteFile() {
-
   const project =
     getActiveProject();
 
   const file =
     getActiveFile();
-
 
   if (
     !project ||
@@ -974,30 +1507,23 @@ function deleteFile() {
     return;
   }
 
-
   if (
     project.files.length <= 1
   ) {
-
     alert(
       "A project needs at least one file."
     );
 
     return;
-
   }
-
 
   if (
     !confirm(
       `Delete "${file.name}"?`
     )
   ) {
-
     return;
-
   }
-
 
   project.files =
     project.files.filter(
@@ -1006,20 +1532,24 @@ function deleteFile() {
         file.name
     );
 
-
   activeFileName =
     project.files[0].name;
 
+  selectedTreeItem = {
+    type: "file",
+    path: activeFileName
+  };
+
+  expandParentsOfFile(
+    activeFileName
+  );
 
   project.updatedAt =
     Date.now();
 
-
   saveProjects();
 
-
   render();
-
 }
 
 
@@ -1028,13 +1558,11 @@ function deleteFile() {
    ========================= */
 
 function renameFile() {
-
   const project =
     getActiveProject();
 
   const file =
     getActiveFile();
-
 
   if (
     !project ||
@@ -1043,62 +1571,368 @@ function renameFile() {
     return;
   }
 
+  const oldPath =
+    file.name;
+
+  const parent =
+    getParentPath(
+      oldPath
+    );
 
   const newName =
     prompt(
       "New file name:",
-      file.name
+      getBaseName(oldPath)
     );
 
-
-  if (
-    !newName?.trim()
-  ) {
+  if (!newName?.trim()) {
     return;
   }
 
-
   const cleanName =
-    newName.trim();
+    normalizePath(newName);
 
+  if (
+    !cleanName ||
+    cleanName.includes("/")
+  ) {
+    alert(
+      "Please enter only the new file name."
+    );
+
+    return;
+  }
+
+  const newPath =
+    joinPath(
+      parent,
+      cleanName
+    );
 
   const duplicate =
     project.files.some(
       item =>
         item !== file &&
         item.name.toLowerCase() ===
-        cleanName.toLowerCase()
+          newPath.toLowerCase()
     );
 
-
   if (duplicate) {
-
     alert(
       "A file with that name already exists."
     );
 
     return;
-
   }
 
-
   file.name =
-    cleanName;
-
+    newPath;
 
   activeFileName =
-    cleanName;
+    newPath;
 
+  selectedTreeItem = {
+    type: "file",
+    path: newPath
+  };
 
   project.updatedAt =
     Date.now();
 
+  saveProjects();
+
+  render();
+}
+
+
+/* =========================
+   RENAME FOLDER
+   ========================= */
+
+function renameFolder() {
+  const project =
+    getActiveProject();
+
+  if (
+    !project ||
+    selectedTreeItem?.type !==
+      "folder"
+  ) {
+    return;
+  }
+
+  const oldPath =
+    selectedTreeItem.path;
+
+  const parent =
+    getParentPath(
+      oldPath
+    );
+
+  const oldName =
+    getBaseName(
+      oldPath
+    );
+
+  const newName =
+    prompt(
+      "New folder name:",
+      oldName
+    );
+
+  if (!newName?.trim()) {
+    return;
+  }
+
+  const cleanName =
+    normalizePath(newName);
+
+  if (
+    !cleanName ||
+    cleanName.includes("/")
+  ) {
+    alert(
+      "Please enter only the new folder name."
+    );
+
+    return;
+  }
+
+  const newPath =
+    joinPath(
+      parent,
+      cleanName
+    );
+
+  if (
+    newPath ===
+    oldPath
+  ) {
+    return;
+  }
+
+  const collision =
+    getAllFolders(project)
+      .some(
+        folder =>
+          folder !== oldPath &&
+          (
+            folder.toLowerCase() ===
+              newPath.toLowerCase() ||
+            isInsideFolder(
+              folder,
+              newPath
+            )
+          )
+      );
+
+  if (collision) {
+    alert(
+      "A folder with that name already exists."
+    );
+
+    return;
+  }
+
+  project.folders =
+    project.folders.map(
+      folder => {
+        if (
+          folder === oldPath
+        ) {
+          return newPath;
+        }
+
+        if (
+          folder.startsWith(
+            `${oldPath}/`
+          )
+        ) {
+          return (
+            newPath +
+            folder.slice(
+              oldPath.length
+            )
+          );
+        }
+
+        return folder;
+      }
+    );
+
+  project.files =
+    project.files.map(
+      file => {
+        if (
+          file.name ===
+          oldPath
+        ) {
+          return file;
+        }
+
+        if (
+          file.name.startsWith(
+            `${oldPath}/`
+          )
+        ) {
+          return {
+            ...file,
+            name:
+              newPath +
+              file.name.slice(
+                oldPath.length
+              )
+          };
+        }
+
+        return file;
+      }
+    );
+
+  if (
+    isInsideFolder(
+      activeFileName,
+      oldPath
+    )
+  ) {
+    activeFileName =
+      newPath +
+      activeFileName.slice(
+        oldPath.length
+      );
+  }
+
+  selectedTreeItem = {
+    type: "folder",
+    path: newPath
+  };
+
+  expandedFolders.delete(
+    oldPath
+  );
+
+  expandedFolders.add(
+    newPath
+  );
+
+  project.updatedAt =
+    Date.now();
 
   saveProjects();
 
+  render();
+}
+
+
+/* =========================
+   DELETE FOLDER
+   ========================= */
+
+function deleteFolder() {
+  const project =
+    getActiveProject();
+
+  if (
+    !project ||
+    selectedTreeItem?.type !==
+      "folder"
+  ) {
+    return;
+  }
+
+  const folder =
+    selectedTreeItem.path;
+
+  const filesToDelete =
+    project.files.filter(
+      file =>
+        isInsideFolder(
+          file.name,
+          folder
+        )
+    );
+
+  if (
+    filesToDelete.length ===
+    project.files.length
+  ) {
+    alert(
+      "You cannot delete the folder because it would leave the project without any files."
+    );
+
+    return;
+  }
+
+  if (
+    !confirm(
+      `Delete folder "${folder}" and everything inside it?`
+    )
+  ) {
+    return;
+  }
+
+  project.files =
+    project.files.filter(
+      file =>
+        !isInsideFolder(
+          file.name,
+          folder
+        )
+    );
+
+  project.folders =
+    project.folders.filter(
+      item =>
+        !isInsideFolder(
+          item,
+          folder
+        )
+    );
+
+  if (
+    !project.files.some(
+      file =>
+        file.name ===
+        activeFileName
+    )
+  ) {
+    activeFileName =
+      project.files[0].name;
+
+    selectedTreeItem = {
+      type: "file",
+      path: activeFileName
+    };
+
+    expandParentsOfFile(
+      activeFileName
+    );
+  } else {
+    selectedTreeItem =
+      null;
+  }
+
+  expandedFolders.forEach(
+    expanded => {
+      if (
+        isInsideFolder(
+          expanded,
+          folder
+        )
+      ) {
+        expandedFolders.delete(
+          expanded
+        );
+      }
+    }
+  );
+
+  project.updatedAt =
+    Date.now();
+
+  saveProjects();
 
   render();
-
 }
 
 
@@ -1109,24 +1943,19 @@ function renameFile() {
 async function handleHomeUpload(
   event: Event
 ) {
-
   const input =
     event.target as
       HTMLInputElement;
 
-
   const file =
     input.files?.[0];
-
 
   if (!file) {
     return;
   }
 
-
   const text =
     await file.text();
-
 
   const projectName =
     file.name.replace(
@@ -1134,25 +1963,16 @@ async function handleHomeUpload(
       ""
     );
 
-
   createProject(
     projectName
   );
 
-
   const project =
     getActiveProject();
-
 
   if (!project) {
     return;
   }
-
-
-  /*
-   * Replace index.html
-   * for an uploaded HTML file.
-   */
 
   if (
     file.name
@@ -1162,47 +1982,36 @@ async function handleHomeUpload(
       .toLowerCase()
       .endsWith(".htm")
   ) {
-
     project.files[0].content =
       text;
-
 
     activeFileName =
       project.files[0].name;
 
   } else {
-
-    /*
-     * Otherwise add the
-     * uploaded file.
-     */
-
     project.files.push({
-
       name:
         file.name,
 
       content:
         text
-
     });
-
 
     activeFileName =
       file.name;
-
   }
 
+  selectedTreeItem = {
+    type: "file",
+    path: activeFileName
+  };
 
   project.updatedAt =
     Date.now();
 
-
   saveProjects();
 
-
   render();
-
 }
 
 
@@ -1211,22 +2020,17 @@ async function handleHomeUpload(
    ========================= */
 
 function renderEditor() {
-
   const project =
     getActiveProject();
 
-
   if (!project) {
-
     currentPage =
       "home";
 
     render();
 
     return;
-
   }
-
 
   if (
     !project.files.some(
@@ -1235,25 +2039,29 @@ function renderEditor() {
         activeFileName
     )
   ) {
-
     activeFileName =
       project.files[0]?.name ??
       "index.html";
-
   }
 
+  expandParentsOfFile(
+    activeFileName
+  );
+
+  if (!selectedTreeItem) {
+    selectedTreeItem = {
+      type: "file",
+      path: activeFileName
+    };
+  }
 
   const file =
     getActiveFile();
 
-
   app.innerHTML = `
-
     <div class="shell">
 
-
       <aside class="sidebar">
-
 
         <div class="brand">
 
@@ -1261,17 +2069,9 @@ function renderEditor() {
             E
           </div>
 
-
           <div>
-
-            <strong>
-              Echo11
-            </strong>
-
-            <span>
-              Code Studio
-            </span>
-
+            <strong>Echo11</strong>
+            <span>Code Studio</span>
           </div>
 
         </div>
@@ -1290,7 +2090,6 @@ function renderEditor() {
           <span>
             PROJECTS
           </span>
-
 
           <button
             class="icon-button"
@@ -1312,39 +2111,95 @@ function renderEditor() {
             projects
               .map(
                 item => `
+                  <button
+                    class="project-item ${
+                      item.id ===
+                      activeProjectId
+                        ? "active"
+                        : ""
+                    }"
+                    data-project="${escapeHtml(
+                      item.id
+                    )}"
+                  >
 
-              <button
-                class="project-item ${
-                  item.id ===
-                  activeProjectId
-                    ? "active"
-                    : ""
-                }"
-                data-project="${escapeHtml(
-                  item.id
-                )}"
-              >
+                    <span
+                      class="project-dot"
+                    ></span>
 
-                <span
-                  class="project-dot"
-                ></span>
+                    <span
+                      class="project-name"
+                    >
+                      ${escapeHtml(
+                        item.name
+                      )}
+                    </span>
 
-                <span
-                  class="project-name"
-                >
-                  ${escapeHtml(
-                    item.name
-                  )}
-                </span>
-
-              </button>
-
-            `
+                  </button>
+                `
               )
               .join("")
           }
 
         </nav>
+
+
+        <div class="explorer-heading">
+
+          <span>
+            EXPLORER
+          </span>
+
+          <div class="explorer-actions">
+
+            <button
+              class="tree-action-button"
+              id="newFolder"
+              title="New folder"
+            >
+              +📁
+            </button>
+
+            <button
+              class="tree-action-button"
+              id="newTreeFile"
+              title="New file"
+            >
+              +📄
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <div class="explorer-toolbar">
+
+          <button
+            id="renameTreeItem"
+            title="Rename selected item"
+          >
+            ✎
+          </button>
+
+          <button
+            id="deleteTreeItem"
+            title="Delete selected item"
+          >
+            ×
+          </button>
+
+        </div>
+
+
+        <div
+          class="file-tree"
+          aria-label="File Explorer"
+        >
+
+          ${renderFolderTree(project)}
+
+        </div>
 
 
         <div class="sidebar-footer">
@@ -1355,15 +2210,12 @@ function renderEditor() {
 
         </div>
 
-
       </aside>
 
 
       <main class="workspace">
 
-
         <header class="topbar">
-
 
           <div class="breadcrumbs">
 
@@ -1386,14 +2238,12 @@ function renderEditor() {
 
           <div class="top-actions">
 
-
             <button
               class="top-button"
               id="uploadFile"
             >
               ↑ Upload
             </button>
-
 
             <button
               class="top-button"
@@ -1402,14 +2252,12 @@ function renderEditor() {
               ↓ Download
             </button>
 
-
             <button
               class="top-button"
               id="downloadProject"
             >
               ↓ Project
             </button>
-
 
             <button
               class="top-button"
@@ -1418,7 +2266,6 @@ function renderEditor() {
               Rename
             </button>
 
-
             <button
               class="top-button danger"
               id="deleteProject"
@@ -1426,9 +2273,7 @@ function renderEditor() {
               Delete
             </button>
 
-
           </div>
-
 
         </header>
 
@@ -1437,7 +2282,7 @@ function renderEditor() {
           type="file"
           id="fileUpload"
           class="hidden-file-input"
-          accept=".html,.htm,.css,.js,.ts,.txt,.json"
+          accept=".html,.htm,.css,.js,.ts,.jsx,.tsx,.txt,.json"
         />
 
 
@@ -1445,49 +2290,43 @@ function renderEditor() {
           class="editor-layout"
         >
 
-
           <div
             class="editor-panel"
           >
-
 
             <div
               class="panel-header"
             >
 
-
               <div
                 class="tabs"
               >
-
 
                 ${
                   project.files
                     .map(
                       currentFile => `
-
-                    <button
-                      class="tab ${
-                        activeFileName ===
-                        currentFile.name
-                          ? "active"
-                          : ""
-                      }"
-                      data-file="${escapeHtml(
-                        currentFile.name
-                      )}"
-                      title="${escapeHtml(
-                        currentFile.name
-                      )}"
-                    >
-
-                      ${escapeHtml(
-                        currentFile.name
-                      )}
-
-                    </button>
-
-                  `
+                        <button
+                          class="tab ${
+                            activeFileName ===
+                            currentFile.name
+                              ? "active"
+                              : ""
+                          }"
+                          data-file="${escapeHtml(
+                            currentFile.name
+                          )}"
+                          title="${escapeHtml(
+                            currentFile.name
+                          )}"
+                        >
+                          ${escapeHtml(
+                            getBaseName(
+                              currentFile.name
+                            )
+                          )}
+                        </button>
+                      `
                     )
                     .join("")
                 }
@@ -1519,7 +2358,6 @@ function renderEditor() {
                   ✎
                 </button>
 
-
               </div>
 
 
@@ -1529,7 +2367,6 @@ function renderEditor() {
               >
                 Auto-saved
               </span>
-
 
             </div>
 
@@ -1544,7 +2381,6 @@ function renderEditor() {
 
             </div>
 
-
           </div>
 
 
@@ -1552,11 +2388,9 @@ function renderEditor() {
             class="preview-panel"
           >
 
-
             <div
               class="panel-header"
             >
-
 
               <div
                 class="preview-title"
@@ -1575,7 +2409,6 @@ function renderEditor() {
                 class="preview-actions"
               >
 
-
                 <button
                   class="preview-action-button"
                   id="fullscreenPreview"
@@ -1583,7 +2416,6 @@ function renderEditor() {
                 >
                   ⛶
                 </button>
-
 
                 <button
                   class="preview-action-button"
@@ -1593,7 +2425,6 @@ function renderEditor() {
                   ↗
                 </button>
 
-
                 <button
                   class="refresh-button"
                   id="refreshPreview"
@@ -1602,9 +2433,7 @@ function renderEditor() {
                   ↻
                 </button>
 
-
               </div>
-
 
             </div>
 
@@ -1617,18 +2446,13 @@ function renderEditor() {
               allowfullscreen
             ></iframe>
 
-
           </section>
-
 
         </section>
 
-
       </main>
 
-
     </div>
-
   `;
 
 
@@ -1636,12 +2460,9 @@ function renderEditor() {
     file?.content ?? ""
   );
 
-
   wireEditorEvents();
 
-
   updatePreview();
-
 }
 
 
@@ -1652,29 +2473,21 @@ function renderEditor() {
 function getLanguage(
   filename: string
 ) {
-
   const lower =
     filename.toLowerCase();
-
 
   if (
     lower.endsWith(".html") ||
     lower.endsWith(".htm")
   ) {
-
     return html();
-
   }
-
 
   if (
     lower.endsWith(".css")
   ) {
-
     return css();
-
   }
-
 
   if (
     lower.endsWith(".js") ||
@@ -1682,7 +2495,6 @@ function getLanguage(
     lower.endsWith(".jsx") ||
     lower.endsWith(".tsx")
   ) {
-
     return javascript({
       jsx:
         lower.endsWith(".jsx") ||
@@ -1692,110 +2504,77 @@ function getLanguage(
         lower.endsWith(".ts") ||
         lower.endsWith(".tsx")
     });
-
   }
 
-
-  /*
-   * Plain text files don't
-   * need a language extension.
-   */
-
   return [];
-
 }
 
 
 function createCodeMirror(
   content: string
 ) {
-
   const container =
     document.querySelector<HTMLDivElement>(
       "#codeEditor"
     );
 
-
   if (!container) {
     return;
   }
 
-
   const file =
     getActiveFile();
-
 
   const language =
     file
       ? getLanguage(file.name)
       : [];
 
-
   const state =
     EditorState.create({
-
       doc:
         content,
 
       extensions: [
-
         basicSetup,
 
         history(),
 
-
         keymap.of([
-
           ...defaultKeymap,
-
           ...historyKeymap
-
         ]),
-
 
         language,
 
-
         oneDark,
 
-
         EditorView.theme({
-
           "&": {
-
             height:
               "100%",
 
             fontSize:
               "13px"
-
           },
 
-
           ".cm-scroller": {
-
             overflow:
               "auto",
 
             fontFamily:
               '"SFMono-Regular", Consolas, "Liberation Mono", monospace'
-
           },
 
-
           ".cm-content": {
-
             padding:
               "15px 18px",
 
             minHeight:
               "100%"
-
           },
 
-
           ".cm-gutters": {
-
             background:
               "#0d1117",
 
@@ -1804,55 +2583,36 @@ function createCodeMirror(
 
             border:
               "0"
-
           },
-
 
           ".cm-activeLineGutter": {
-
             background:
               "#161b22"
-
           },
-
 
           ".cm-activeLine": {
-
             background:
               "rgba(88, 166, 255, .04)"
-
           },
-
 
           ".cm-selectionBackground": {
-
             background:
               "rgba(56, 139, 253, .25) !important"
-
           },
 
-
           "&.cm-focused .cm-selectionBackground": {
-
             background:
               "rgba(56, 139, 253, .30) !important"
-
           }
-
         }),
-
 
         EditorView.updateListener.of(
           update => {
-
             if (
               !update.docChanged
             ) {
-
               return;
-
             }
-
 
             const currentFile =
               getActiveFile();
@@ -1860,78 +2620,53 @@ function createCodeMirror(
             const project =
               getActiveProject();
 
-
             if (
               !currentFile ||
               !project
             ) {
-
               return;
-
             }
-
 
             currentFile.content =
               update.state.doc.toString();
 
-
             project.updatedAt =
               Date.now();
 
-
             saveProjects();
 
-
             updatePreview();
-
 
             const label =
               document.querySelector(
                 "#savedLabel"
               );
 
-
             if (label) {
-
               label.textContent =
                 "Saved";
 
               window.setTimeout(
                 () => {
-
-                  if (
-                    label
-                  ) {
-
+                  if (label) {
                     label.textContent =
                       "Auto-saved";
-
                   }
-
                 },
                 700
               );
-
             }
-
           }
         )
-
       ]
-
     });
-
 
   editorView =
     new EditorView({
-
       state,
-
       parent:
         container
-
     });
-
 }
 
 
@@ -1941,11 +2676,6 @@ function createCodeMirror(
 
 function wireEditorEvents() {
 
-
-  /*
-   * Home
-   */
-
   document
     .querySelector(
       "#backHome"
@@ -1953,19 +2683,13 @@ function wireEditorEvents() {
     ?.addEventListener(
       "click",
       () => {
-
         currentPage =
           "home";
 
         render();
-
       }
     );
 
-
-  /*
-   * Projects
-   */
 
   document
     .querySelectorAll<HTMLButtonElement>(
@@ -1973,37 +2697,38 @@ function wireEditorEvents() {
     )
     .forEach(
       button => {
-
         button.addEventListener(
           "click",
           () => {
-
             activeProjectId =
               button.dataset
                 .project!;
 
-
             const project =
               getActiveProject();
-
 
             activeFileName =
               project?.files[0]?.name ??
               "index.html";
 
+            selectedTreeItem = {
+              type: "file",
+              path:
+                activeFileName
+            };
+
+            expandedFolders.clear();
+
+            expandParentsOfFile(
+              activeFileName
+            );
 
             render();
-
           }
         );
-
       }
     );
 
-
-  /*
-   * Files
-   */
 
   document
     .querySelectorAll<HTMLButtonElement>(
@@ -2011,28 +2736,101 @@ function wireEditorEvents() {
     )
     .forEach(
       button => {
-
         button.addEventListener(
           "click",
           () => {
+            const path =
+              button.dataset.file!;
 
             activeFileName =
-              button.dataset
-                .file!;
+              path;
 
+            selectedTreeItem = {
+              type: "file",
+              path
+            };
+
+            expandParentsOfFile(
+              path
+            );
 
             render();
-
           }
         );
-
       }
     );
 
 
-  /*
-   * New file
-   */
+  document
+    .querySelectorAll<HTMLButtonElement>(
+      "[data-tree-file]"
+    )
+    .forEach(
+      button => {
+        button.addEventListener(
+          "click",
+          () => {
+            const path =
+              button.dataset
+                .treeFile!;
+
+            activeFileName =
+              path;
+
+            selectedTreeItem = {
+              type: "file",
+              path
+            };
+
+            expandParentsOfFile(
+              path
+            );
+
+            render();
+          }
+        );
+      }
+    );
+
+
+  document
+    .querySelectorAll<HTMLButtonElement>(
+      "[data-folder]"
+    )
+    .forEach(
+      button => {
+        button.addEventListener(
+          "click",
+          () => {
+            const folder =
+              button.dataset
+                .folder!;
+
+            selectedTreeItem = {
+              type: "folder",
+              path: folder
+            };
+
+            if (
+              expandedFolders.has(
+                folder
+              )
+            ) {
+              expandedFolders.delete(
+                folder
+              );
+            } else {
+              expandedFolders.add(
+                folder
+              );
+            }
+
+            render();
+          }
+        );
+      }
+    );
+
 
   document
     .querySelector(
@@ -2044,9 +2842,25 @@ function wireEditorEvents() {
     );
 
 
-  /*
-   * Delete file
-   */
+  document
+    .querySelector(
+      "#newTreeFile"
+    )
+    ?.addEventListener(
+      "click",
+      createFile
+    );
+
+
+  document
+    .querySelector(
+      "#newFolder"
+    )
+    ?.addEventListener(
+      "click",
+      createFolder
+    );
+
 
   document
     .querySelector(
@@ -2058,10 +2872,6 @@ function wireEditorEvents() {
     );
 
 
-  /*
-   * Rename file
-   */
-
   document
     .querySelector(
       "#renameFile"
@@ -2072,9 +2882,55 @@ function wireEditorEvents() {
     );
 
 
-  /*
-   * New project
-   */
+  document
+    .querySelector(
+      "#renameTreeItem"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+        if (
+          selectedTreeItem?.type ===
+          "folder"
+        ) {
+          renameFolder();
+        } else if (
+          selectedTreeItem?.type ===
+          "file"
+        ) {
+          activeFileName =
+            selectedTreeItem.path;
+
+          renameFile();
+        }
+      }
+    );
+
+
+  document
+    .querySelector(
+      "#deleteTreeItem"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+        if (
+          selectedTreeItem?.type ===
+          "folder"
+        ) {
+          deleteFolder();
+        } else if (
+          selectedTreeItem?.type ===
+          "file"
+        ) {
+          activeFileName =
+            selectedTreeItem.path;
+
+          deleteFile();
+        }
+      }
+    );
+
 
   document
     .querySelector(
@@ -2086,10 +2942,6 @@ function wireEditorEvents() {
     );
 
 
-  /*
-   * Rename project
-   */
-
   document
     .querySelector(
       "#renameProject"
@@ -2097,15 +2949,12 @@ function wireEditorEvents() {
     ?.addEventListener(
       "click",
       () => {
-
         const project =
           getActiveProject();
-
 
         if (!project) {
           return;
         }
-
 
         const name =
           prompt(
@@ -2113,36 +2962,22 @@ function wireEditorEvents() {
             project.name
           );
 
-
-        if (
-          !name?.trim()
-        ) {
-
+        if (!name?.trim()) {
           return;
-
         }
-
 
         project.name =
           name.trim();
 
-
         project.updatedAt =
           Date.now();
 
-
         saveProjects();
 
-
         render();
-
       }
     );
 
-
-  /*
-   * Delete project
-   */
 
   document
     .querySelector(
@@ -2151,39 +2986,30 @@ function wireEditorEvents() {
     ?.addEventListener(
       "click",
       () => {
-
         if (
           projects.length === 1
         ) {
-
           alert(
             "Echo11 needs at least one project."
           );
 
           return;
-
         }
-
 
         const project =
           getActiveProject();
 
-
         if (!project) {
           return;
         }
-
 
         if (
           !confirm(
             `Delete "${project.name}"?`
           )
         ) {
-
           return;
-
         }
-
 
         projects =
           projects.filter(
@@ -2192,29 +3018,29 @@ function wireEditorEvents() {
               project.id
           );
 
-
         activeProjectId =
           projects[0].id;
 
-
         activeFileName =
-          projects[0].files[0]
+          projects[0]
+            .files[0]
             ?.name ??
           "index.html";
 
+        selectedTreeItem = {
+          type: "file",
+          path:
+            activeFileName
+        };
+
+        expandedFolders.clear();
 
         saveProjects();
 
-
         render();
-
       }
     );
 
-
-  /*
-   * Upload
-   */
 
   document
     .querySelector(
@@ -2223,13 +3049,11 @@ function wireEditorEvents() {
     ?.addEventListener(
       "click",
       () => {
-
         document
           .querySelector<HTMLInputElement>(
             "#fileUpload"
           )
           ?.click();
-
       }
     );
 
@@ -2244,10 +3068,6 @@ function wireEditorEvents() {
     );
 
 
-  /*
-   * Download current file
-   */
-
   document
     .querySelector(
       "#downloadFile"
@@ -2257,10 +3077,6 @@ function wireEditorEvents() {
       downloadCurrentFile
     );
 
-
-  /*
-   * Download project
-   */
 
   document
     .querySelector(
@@ -2272,10 +3088,6 @@ function wireEditorEvents() {
     );
 
 
-  /*
-   * Refresh
-   */
-
   document
     .querySelector(
       "#refreshPreview"
@@ -2286,10 +3098,6 @@ function wireEditorEvents() {
     );
 
 
-  /*
-   * Fullscreen
-   */
-
   document
     .querySelector(
       "#fullscreenPreview"
@@ -2297,50 +3105,34 @@ function wireEditorEvents() {
     ?.addEventListener(
       "click",
       async () => {
-
         const preview =
           document.querySelector<HTMLIFrameElement>(
             "#preview"
           );
 
-
         if (!preview) {
           return;
         }
 
-
         try {
-
           if (
             document.fullscreenElement
           ) {
-
             await document
               .exitFullscreen();
-
           } else {
-
             await preview
               .requestFullscreen();
-
           }
-
         } catch (error) {
-
           console.error(
             "Fullscreen failed:",
             error
           );
-
         }
-
       }
     );
 
-
-  /*
-   * Open preview in new tab
-   */
 
   document
     .querySelector(
@@ -2350,7 +3142,6 @@ function wireEditorEvents() {
       "click",
       openPreviewInNewTab
     );
-
 }
 
 
@@ -2361,79 +3152,90 @@ function wireEditorEvents() {
 async function handleEditorUpload(
   event: Event
 ) {
-
   const input =
     event.target as
       HTMLInputElement;
 
-
   const file =
     input.files?.[0];
-
 
   if (!file) {
     return;
   }
 
-
   const text =
     await file.text();
 
-
   const project =
     getActiveProject();
-
 
   if (!project) {
     return;
   }
 
+  let parent = "";
+
+  if (
+    selectedTreeItem?.type ===
+    "folder"
+  ) {
+    parent =
+      selectedTreeItem.path;
+  }
+
+  const targetName =
+    joinPath(
+      parent,
+      file.name
+    );
 
   const existing =
     project.files.find(
       item =>
         item.name.toLowerCase() ===
-        file.name.toLowerCase()
+        targetName.toLowerCase()
     );
 
-
   if (existing) {
-
     existing.content =
       text;
-
 
     activeFileName =
       existing.name;
 
   } else {
-
     project.files.push({
-
       name:
-        file.name,
+        targetName,
 
       content:
         text
-
     });
 
-
     activeFileName =
-      file.name;
-
+      targetName;
   }
 
+  addMissingParentFolders(
+    project
+  );
+
+  selectedTreeItem = {
+    type: "file",
+    path:
+      activeFileName
+  };
+
+  expandParentsOfFile(
+    activeFileName
+  );
 
   project.updatedAt =
     Date.now();
 
-
   saveProjects();
 
-
   render();
-
 }
 
 
@@ -2441,32 +3243,9 @@ async function handleEditorUpload(
    LIVE PREVIEW
    ========================= */
 
-function updatePreview() {
-
-  const project =
-    getActiveProject();
-
-
-  const preview =
-    document.querySelector<HTMLIFrameElement>(
-      "#preview"
-    );
-
-
-  if (
-    !project ||
-    !preview
-  ) {
-
-    return;
-
-  }
-
-
-  /*
-   * Find index.html
-   */
-
+function buildPreviewHtml(
+  project: Project
+): string {
   const htmlFile =
     project.files.find(
       file =>
@@ -2475,57 +3254,39 @@ function updatePreview() {
         "index.html"
     );
 
+  const css =
+    project.files
+      .filter(
+        file =>
+          file.name
+            .toLowerCase()
+            .endsWith(".css")
+      )
+      .map(
+        file =>
+          file.content
+      )
+      .join("\n");
 
-  /*
-   * Find all CSS files
-   */
-
-  const cssFiles =
-    project.files.filter(
-      file =>
-        file.name
-          .toLowerCase()
-          .endsWith(".css")
-    );
-
-
-  /*
-   * Find all JavaScript files
-   */
-
-  const jsFiles =
-    project.files.filter(
-      file =>
-        file.name
-          .toLowerCase()
-          .endsWith(".js")
-    );
-
+  const js =
+    project.files
+      .filter(
+        file =>
+          file.name
+            .toLowerCase()
+            .endsWith(".js")
+      )
+      .map(
+        file =>
+          file.content
+      )
+      .join("\n");
 
   const html =
     htmlFile?.content ??
     "";
 
-
-  const css =
-    cssFiles
-      .map(
-        file =>
-          file.content
-      )
-      .join("\n");
-
-
-  const js =
-    jsFiles
-      .map(
-        file =>
-          file.content
-      )
-      .join("\n");
-
-
-  const documentText = `<!doctype html>
+  return `<!doctype html>
 
 <html>
 
@@ -2546,11 +3307,9 @@ ${css}
 
 </head>
 
-
 <body>
 
 ${html}
-
 
 <script>
 
@@ -2573,15 +3332,32 @@ document.body.insertAdjacentHTML(
 
 <\/script>
 
-
 </body>
 
 </html>`;
+}
 
+
+function updatePreview() {
+  const project =
+    getActiveProject();
+
+  const preview =
+    document.querySelector<HTMLIFrameElement>(
+      "#preview"
+    );
+
+  if (
+    !project ||
+    !preview
+  ) {
+    return;
+  }
 
   preview.srcdoc =
-    documentText;
-
+    buildPreviewHtml(
+      project
+    );
 }
 
 
@@ -2590,104 +3366,17 @@ document.body.insertAdjacentHTML(
    ========================= */
 
 function openPreviewInNewTab() {
-
   const project =
     getActiveProject();
-
 
   if (!project) {
     return;
   }
 
-
-  const htmlFile =
-    project.files.find(
-      file =>
-        file.name
-          .toLowerCase() ===
-        "index.html"
-    );
-
-
-  const css =
-    project.files
-      .filter(
-        file =>
-          file.name
-            .toLowerCase()
-            .endsWith(".css")
-      )
-      .map(
-        file =>
-          file.content
-      )
-      .join("\n");
-
-
-  const js =
-    project.files
-      .filter(
-        file =>
-          file.name
-            .toLowerCase()
-            .endsWith(".js")
-      )
-      .map(
-        file =>
-          file.content
-      )
-      .join("\n");
-
-
-  const html =
-    htmlFile?.content ??
-    "";
-
-
   const previewHtml =
-`<!doctype html>
-
-<html>
-
-<head>
-
-<meta charset="UTF-8">
-
-<meta
-  name="viewport"
-  content="width=device-width, initial-scale=1.0"
->
-
-<style>
-
-${css}
-
-</style>
-
-</head>
-
-<body>
-
-${html}
-
-<script>
-
-try {
-
-${js}
-
-} catch (error) {
-
-console.error(error);
-
-}
-
-<\/script>
-
-</body>
-
-</html>`;
-
+    buildPreviewHtml(
+      project
+    );
 
   const blob =
     new Blob(
@@ -2698,35 +3387,24 @@ console.error(error);
       }
     );
 
-
   const url =
     URL.createObjectURL(
       blob
     );
-
 
   window.open(
     url,
     "_blank"
   );
 
-
-  /*
-   * Give the new tab time to
-   * load before cleaning up.
-   */
-
   window.setTimeout(
     () => {
-
       URL.revokeObjectURL(
         url
       );
-
     },
     10000
   );
-
 }
 
 
@@ -2738,7 +3416,6 @@ function downloadFile(
   filename: string,
   contents: string
 ) {
-
   const blob =
     new Blob(
       [contents],
@@ -2748,42 +3425,33 @@ function downloadFile(
       }
     );
 
-
   const url =
     URL.createObjectURL(
       blob
     );
-
 
   const link =
     document.createElement(
       "a"
     );
 
-
   link.href =
     url;
 
-
   link.download =
     filename;
-
 
   document.body.appendChild(
     link
   );
 
-
   link.click();
 
-
   link.remove();
-
 
   URL.revokeObjectURL(
     url
   );
-
 }
 
 
@@ -2792,21 +3460,19 @@ function downloadFile(
    ========================= */
 
 function downloadCurrentFile() {
-
   const file =
     getActiveFile();
-
 
   if (!file) {
     return;
   }
 
-
   downloadFile(
-    file.name,
+    getBaseName(
+      file.name
+    ),
     file.content
   );
-
 }
 
 
@@ -2815,70 +3481,55 @@ function downloadCurrentFile() {
    ========================= */
 
 function downloadProject() {
-
   const project =
     getActiveProject();
-
 
   if (!project) {
     return;
   }
 
-
   const projectFile = {
-
     echo11:
       true,
 
     version:
-      2,
+      3,
 
     project: {
-
       name:
         project.name,
 
+      folders:
+        project.folders,
+
       files:
         project.files
-
     }
-
   };
-
 
   const safeName =
     project.name
-
       .replace(
         /[^a-z0-9-_ ]/gi,
         ""
       )
-
       .trim()
-
       .replace(
         /\s+/g,
         "-"
       )
-
       .toLowerCase()
-
       ||
       "echo11-project";
 
-
   downloadFile(
-
     `${safeName}.echo11.json`,
-
     JSON.stringify(
       projectFile,
       null,
       2
     )
-
   );
-
 }
 
 

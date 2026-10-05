@@ -878,3 +878,327 @@ button {
 #codeEditor .cm-cursor {
   border-left-color: #58a6ff;
 }
+/* =========================
+   ECHO11 FILE EXPLORER
+   ========================= */
+
+.explorer-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 18px 14px 7px 18px;
+  color: #6e7681;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+
+.explorer-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tree-action-button {
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: transparent;
+  color: #8b949e;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tree-action-button:hover {
+  border-color: #388bfd;
+  background: #161b22;
+  color: #58a6ff;
+}
+
+
+/* =========================
+   EXPLORER TOOLBAR
+   ========================= */
+
+.explorer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 31px;
+  padding: 0 10px 5px;
+}
+
+.explorer-toolbar button {
+  width: 27px;
+  height: 25px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: #6e7681;
+  cursor: pointer;
+}
+
+.explorer-toolbar button:hover {
+  border-color: #30363d;
+  background: #161b22;
+  color: #f0f6fc;
+}
+
+#deleteTreeItem:hover {
+  border-color: #f85149;
+  color: #ff7b72;
+}
+
+
+/* =========================
+   FILE TREE
+   ========================= */
+
+.file-tree {
+  min-height: 0;
+  flex: 1;
+  padding: 0 6px 8px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #30363d transparent;
+}
+
+.file-tree::-webkit-scrollbar {
+  width: 7px;
+}
+
+.file-tree::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.file-tree::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  background: #30363d;
+}
+
+.tree-folder {
+  width: 100%;
+}
+
+.tree-children {
+  width: 100%;
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  height: 27px;
+  padding: 0 7px 0 3px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: #8b949e;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tree-row:hover {
+  background: #161b22;
+  color: #f0f6fc;
+}
+
+.tree-row.selected {
+  background: #1b222c;
+  border-color: #30363d;
+  color: #f0f6fc;
+}
+
+.tree-folder-row.selected {
+  color: #f0f6fc;
+}
+
+.tree-chevron {
+  display: inline-grid;
+  width: 15px;
+  height: 18px;
+  flex: 0 0 15px;
+  place-items: center;
+  color: #6e7681;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.tree-icon {
+  display: inline-grid;
+  width: 22px;
+  height: 20px;
+  flex: 0 0 22px;
+  place-items: center;
+  font-size: 13px;
+}
+
+.tree-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.tree-indent {
+  display: flex;
+  align-self: stretch;
+}
+
+.indent-space {
+  display: block;
+  width: 15px;
+  flex: 0 0 15px;
+}
+
+.tree-file-spacer {
+  display: block;
+  width: 15px;
+  flex: 0 0 15px;
+}
+
+
+/* =========================
+   FOLDER COLORS / STATES
+   ========================= */
+
+.tree-folder-row .tree-icon {
+  filter: saturate(.8);
+}
+
+.tree-folder-row:hover .tree-icon,
+.tree-folder-row.selected .tree-icon {
+  filter: saturate(1);
+}
+
+.tree-file-row.selected .tree-icon {
+  transform: translateY(-.5px);
+}
+
+
+/* =========================
+   SIDEBAR SCROLLING
+   ========================= */
+
+.sidebar {
+  min-height: 0;
+}
+
+.project-list {
+  max-height: 180px;
+  flex: 0 0 auto;
+}
+
+.file-tree {
+  min-height: 100px;
+}
+
+
+/* =========================
+   RESPONSIVE EXPLORER
+   ========================= */
+
+@media (max-width: 800px) {
+  .project-list {
+    max-height: 125px;
+  }
+
+  .file-tree {
+    min-height: 80px;
+  }
+
+  .tree-row {
+    height: 29px;
+  }
+}
+
+
+/* =========================
+   MOBILE
+   ========================= */
+
+@media (max-width: 560px) {
+  .sidebar {
+    display: none;
+  }
+}
+
+
+/* =========================
+   IMPROVED TABS
+   ========================= */
+
+.tabs {
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #30363d transparent;
+}
+
+.tabs::-webkit-scrollbar {
+  height: 5px;
+}
+
+.tabs::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tabs::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  background: #30363d;
+}
+
+.tab {
+  flex: 0 0 auto;
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+/* =========================
+   EXPLORER BUTTON POLISH
+   ========================= */
+
+.tree-action-button:first-child {
+  font-size: 11px;
+}
+
+.tree-action-button:last-child {
+  font-size: 11px;
+}
+
+
+/* =========================
+   SELECTED TREE ITEM
+   ========================= */
+
+.tree-row.selected .tree-name {
+  color: #f0f6fc;
+}
+
+.tree-row.selected .tree-chevron {
+  color: #58a6ff;
+}
+
+
+/* =========================
+   EMPTY EXPLORER SPACE
+   ========================= */
+
+.file-tree:empty::after {
+  content: "No files";
+  display: block;
+  padding: 12px 10px;
+  color: #484f58;
+  font-size: 11px;
+}
