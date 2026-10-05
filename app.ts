@@ -346,7 +346,7 @@ function loadProjects(): Project[] {
                       })
                     )
                     .filter(
-                      file =>
+                        .map((file: any) => {
                         file.name.length > 0
                     )
                 : [
@@ -379,7 +379,7 @@ function loadProjects(): Project[] {
                         normalizePath(folder)
                     )
                     .filter(
-                      folder =>
+                      .map((folder: string) => {
                         folder.length > 0
                     )
                 : [];
