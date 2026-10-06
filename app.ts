@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import "./styles.css";
 
 import { EditorState } from "@codemirror/state";
