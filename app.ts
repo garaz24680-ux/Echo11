@@ -570,15 +570,13 @@ function renderHome() {
       <header class="home-topbar">
 
         <div class="brand">
+  <img class="brand-logo" src="${import.meta.env.BASE_URL}Echo11.png" alt="Echo11">
 
-          <img class="brand-logo" src="/Echo11.png" alt="Echo11">
-
-          <div>
-            <strong>Echo11</strong>
-            <span>Code Studio</span>
-          </div>
-
-        </div>
+  <div>
+    <strong>Echo11</strong>
+    <span>Code Studio</span>
+  </div>
+</div>
 
         <button
           class="home-new-button"
