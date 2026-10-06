@@ -42,6 +42,8 @@ import {
 type ProjectFile = {
   name: string;
   content: string;
+  isBinary?: boolean;
+  mimeType?: string;
 };
 
 type Project = {
@@ -343,7 +345,13 @@ function loadProjects(): Project[] {
                         content:
                           typeof file.content === "string"
                             ? file.content
-                            : ""
+                            : "",
+                        isBinary:
+                          file.isBinary === true,
+                        mimeType:
+                          typeof file.mimeType === "string"
+                            ? file.mimeType
+                            : undefined
                       })
                     )
                     .filter(
@@ -620,7 +628,14 @@ function renderHome() {
               class="secondary-button"
               id="heroUpload"
             >
-              ↑ Upload File
+              ↑ Upload Files
+            </button>
+
+            <button
+              class="secondary-button"
+              id="heroFolderUpload"
+            >
+              📁 Upload Folder
             </button>
 
           </div>
@@ -737,7 +752,16 @@ function renderHome() {
         type="file"
         id="homeFileUpload"
         class="hidden-file-input"
-        accept=".html,.htm,.css,.js,.ts,.jsx,.tsx,.txt,.json"
+        multiple
+      />
+
+      <input
+        type="file"
+        id="homeFolderUpload"
+        class="hidden-file-input"
+        multiple
+        webkitdirectory
+        directory
       />
 
     </div>
@@ -783,6 +807,32 @@ function renderHome() {
   document
     .querySelector<HTMLInputElement>(
       "#homeFileUpload"
+    )
+    ?.addEventListener(
+      "change",
+      handleHomeUpload
+    );
+
+
+  document
+    .querySelector(
+      "#heroFolderUpload"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+        document
+          .querySelector<HTMLInputElement>(
+            "#homeFolderUpload"
+          )
+          ?.click();
+      }
+    );
+
+
+  document
+    .querySelector<HTMLInputElement>(
+      "#homeFolderUpload"
     )
     ?.addEventListener(
       "change",
@@ -1260,6 +1310,24 @@ function getFileIcon(
     lower.endsWith(".json")
   ) {
     return "◈";
+  }
+
+  if (
+    /\.(png|jpe?g|gif|webp|bmp|ico|avif|svg)$/i.test(lower)
+  ) {
+    return "🖼️";
+  }
+
+  if (
+    /\.(mp3|wav|ogg|m4a|flac)$/i.test(lower)
+  ) {
+    return "🎵";
+  }
+
+  if (
+    /\.(mp4|webm|mov|avi)$/i.test(lower)
+  ) {
+    return "🎬";
   }
 
   return "📄";
@@ -1937,80 +2005,186 @@ function deleteFolder() {
    HOME UPLOAD
    ========================= */
 
+async function fileToProjectFile(
+  file: File,
+  relativePath = ""
+): Promise<ProjectFile> {
+  const name = normalizePath(
+    relativePath ||
+    file.name
+  );
+
+  const textExtensions = [
+    ".html", ".htm", ".css", ".js", ".mjs", ".cjs",
+    ".ts", ".jsx", ".tsx", ".txt", ".json", ".md",
+    ".xml", ".svg", ".scss", ".sass", ".less", ".vue",
+    ".astro", ".yaml", ".yml", ".csv"
+  ];
+
+  const lower = name.toLowerCase();
+  const isText = textExtensions.some(
+    extension => lower.endsWith(extension)
+  );
+
+  if (isText) {
+    return {
+      name,
+      content: await file.text(),
+      isBinary: false,
+      mimeType: file.type || undefined
+    };
+  }
+
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+      } else {
+        reject(new Error("Could not read file."));
+      }
+    };
+
+    reader.onerror = () =>
+      reject(reader.error ?? new Error("Could not read file."));
+
+    reader.readAsDataURL(file);
+  });
+
+  return {
+    name,
+    content: dataUrl,
+    isBinary: true,
+    mimeType: file.type || "application/octet-stream"
+  };
+}
+
+
+function getUploadRelativePath(file: File): string {
+  const candidate =
+    (file as File & { webkitRelativePath?: string })
+      .webkitRelativePath;
+
+  return normalizePath(
+    candidate || file.name
+  );
+}
+
+
+async function importFilesIntoProject(
+  project: Project,
+  files: File[],
+  parent = ""
+): Promise<string | null> {
+  let firstImportedPath: string | null = null;
+
+  for (const file of files) {
+    const relative = getUploadRelativePath(file);
+    const targetName = joinPath(
+      parent,
+      relative
+    );
+
+    if (!targetName) {
+      continue;
+    }
+
+    const imported = await fileToProjectFile(
+      file,
+      targetName
+    );
+
+    const existing = project.files.find(
+      item =>
+        item.name.toLowerCase() ===
+        targetName.toLowerCase()
+    );
+
+    if (existing) {
+      existing.content = imported.content;
+      existing.isBinary = imported.isBinary;
+      existing.mimeType = imported.mimeType;
+    } else {
+      project.files.push(imported);
+    }
+
+    if (!firstImportedPath) {
+      firstImportedPath = targetName;
+    }
+  }
+
+  addMissingParentFolders(project);
+  return firstImportedPath;
+}
+
+
 async function handleHomeUpload(
   event: Event
 ) {
   const input =
-    event.target as
-      HTMLInputElement;
+    event.target as HTMLInputElement;
 
-  const file =
-    input.files?.[0];
+  const files = Array.from(
+    input.files ?? []
+  );
 
-  if (!file) {
+  if (!files.length) {
     return;
   }
 
-  const text =
-    await file.text();
-
-  const projectName =
-    file.name.replace(
-      /\.[^/.]+$/,
-      ""
-    );
-
-  createProject(
-    projectName
+  const firstPath = getUploadRelativePath(files[0]);
+  const hasFolderPath = files.some(
+    file =>
+      Boolean(
+        (file as File & { webkitRelativePath?: string })
+          .webkitRelativePath
+      )
   );
 
-  const project =
-    getActiveProject();
+  const projectName = hasFolderPath
+    ? firstPath.split("/")[0] || "Uploaded Project"
+    : firstPath.replace(/\.[^/.]+$/, "");
+
+  createProject(projectName);
+
+  const project = getActiveProject();
 
   if (!project) {
     return;
   }
 
-  if (
-    file.name
-      .toLowerCase()
-      .endsWith(".html") ||
-    file.name
-      .toLowerCase()
-      .endsWith(".htm")
-  ) {
-    project.files[0].content =
-      text;
+  // Replace the starter files with the uploaded files.
+  project.files = [];
+  project.folders = [];
 
-    activeFileName =
-      project.files[0].name;
+  const importedFirst = await importFilesIntoProject(
+    project,
+    files,
+    ""
+  );
 
-  } else {
-    project.files.push({
-      name:
-        file.name,
-
-      content:
-        text
-    });
-
-    activeFileName =
-      file.name;
-  }
+  activeFileName =
+    project.files.find(file =>
+      file.name.toLowerCase() === "index.html"
+    )?.name ??
+    importedFirst ??
+    project.files[0]?.name ??
+    "index.html";
 
   selectedTreeItem = {
     type: "file",
     path: activeFileName
   };
 
-  project.updatedAt =
-    Date.now();
+  expandParentsOfFile(activeFileName);
 
+  project.updatedAt = Date.now();
   saveProjects();
 
+  input.value = "";
   render();
 }
-
 
 /* =========================
    EDITOR PAGE
@@ -2239,7 +2413,14 @@ function renderEditor() {
               class="top-button"
               id="uploadFile"
             >
-              ↑ Upload
+              ↑ Upload Files
+            </button>
+
+            <button
+              class="top-button"
+              id="uploadFolder"
+            >
+              📁 Folder
             </button>
 
             <button
@@ -2279,7 +2460,16 @@ function renderEditor() {
           type="file"
           id="fileUpload"
           class="hidden-file-input"
-          accept=".html,.htm,.css,.js,.ts,.jsx,.tsx,.txt,.json"
+          multiple
+        />
+
+        <input
+          type="file"
+          id="folderUpload"
+          class="hidden-file-input"
+          multiple
+          webkitdirectory
+          directory
         />
 
 
@@ -2454,7 +2644,10 @@ function renderEditor() {
 
 
   createCodeMirror(
-    file?.content ?? ""
+    file?.isBinary
+      ? `Binary file\n\n${file.name}\n\nThis file is stored in your Echo11 project and can be used by the live preview.`
+      : file?.content ?? "",
+    Boolean(file?.isBinary)
   );
 
   wireEditorEvents();
@@ -2508,7 +2701,8 @@ function getLanguage(
 
 
 function createCodeMirror(
-  content: string
+  content: string,
+  readOnly = false
 ) {
   const container =
     document.querySelector<HTMLDivElement>(
@@ -2545,6 +2739,8 @@ function createCodeMirror(
         language,
 
         oneDark,
+
+        EditorState.readOnly.of(readOnly),
 
         EditorView.theme({
           "&": {
@@ -2621,6 +2817,10 @@ function createCodeMirror(
               !currentFile ||
               !project
             ) {
+              return;
+            }
+
+            if (currentFile.isBinary) {
               return;
             }
 
@@ -3056,8 +3256,34 @@ function wireEditorEvents() {
 
 
   document
+    .querySelector(
+      "#uploadFolder"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+        document
+          .querySelector<HTMLInputElement>(
+            "#folderUpload"
+          )
+          ?.click();
+      }
+    );
+
+
+  document
     .querySelector<HTMLInputElement>(
       "#fileUpload"
+    )
+    ?.addEventListener(
+      "change",
+      handleEditorUpload
+    );
+
+
+  document
+    .querySelector<HTMLInputElement>(
+      "#folderUpload"
     )
     ?.addEventListener(
       "change",
@@ -3150,21 +3376,17 @@ async function handleEditorUpload(
   event: Event
 ) {
   const input =
-    event.target as
-      HTMLInputElement;
+    event.target as HTMLInputElement;
 
-  const file =
-    input.files?.[0];
+  const files = Array.from(
+    input.files ?? []
+  );
 
-  if (!file) {
+  if (!files.length) {
     return;
   }
 
-  const text =
-    await file.text();
-
-  const project =
-    getActiveProject();
+  const project = getActiveProject();
 
   if (!project) {
     return;
@@ -3172,73 +3394,147 @@ async function handleEditorUpload(
 
   let parent = "";
 
-  if (
-    selectedTreeItem?.type ===
-    "folder"
-  ) {
-    parent =
-      selectedTreeItem.path;
+  if (selectedTreeItem?.type === "folder") {
+    parent = selectedTreeItem.path;
   }
 
-  const targetName =
-    joinPath(
-      parent,
-      file.name
-    );
+  const firstPath = await importFilesIntoProject(
+    project,
+    files,
+    parent
+  );
 
-  const existing =
-    project.files.find(
-      item =>
-        item.name.toLowerCase() ===
-        targetName.toLowerCase()
-    );
+  if (firstPath) {
+    activeFileName = firstPath;
 
-  if (existing) {
-    existing.content =
-      text;
+    selectedTreeItem = {
+      type: "file",
+      path: firstPath
+    };
 
-    activeFileName =
-      existing.name;
-
-  } else {
-    project.files.push({
-      name:
-        targetName,
-
-      content:
-        text
-    });
-
-    activeFileName =
-      targetName;
+    expandParentsOfFile(firstPath);
   }
 
-  addMissingParentFolders(
-    project
-  );
-
-  selectedTreeItem = {
-    type: "file",
-    path:
-      activeFileName
-  };
-
-  expandParentsOfFile(
-    activeFileName
-  );
-
-  project.updatedAt =
-    Date.now();
-
+  project.updatedAt = Date.now();
   saveProjects();
 
+  input.value = "";
   render();
 }
-
 
 /* =========================
    LIVE PREVIEW
    ========================= */
+
+function dataUrlForFile(
+  file: ProjectFile
+): string {
+  return file.content;
+}
+
+
+function resolvePreviewAsset(
+  project: Project,
+  reference: string,
+  baseDirectory = ""
+): string | null {
+  const cleanedReference = reference
+    .trim()
+    .replace(/^['"]|['"]$/g, "")
+    .split("#")[0]
+    .split("?")[0];
+
+  if (
+    !cleanedReference ||
+    /^(data:|https?:|blob:|#|javascript:|mailto:)/i.test(cleanedReference)
+  ) {
+    return null;
+  }
+
+  let path = cleanedReference
+    .replace(/^\.\//, "");
+
+  const parts = baseDirectory
+    ? `${baseDirectory}/${path}`.split("/")
+    : path.split("/");
+
+  const normalizedParts: string[] = [];
+
+  for (const part of parts) {
+    if (!part || part === ".") {
+      continue;
+    }
+
+    if (part === "..") {
+      normalizedParts.pop();
+    } else {
+      normalizedParts.push(part);
+    }
+  }
+
+  path = normalizedParts.join("/");
+
+  const candidates = [
+    path,
+    path.replace(/^\//, "")
+  ];
+
+  const file = project.files.find(
+    item =>
+      item.isBinary &&
+      candidates.some(
+        candidate =>
+          item.name === candidate ||
+          item.name.toLowerCase() === candidate.toLowerCase()
+      )
+  );
+
+  return file
+    ? dataUrlForFile(file)
+    : null;
+}
+
+
+function replacePreviewAssets(
+  project: Project,
+  source: string,
+  baseDirectory = ""
+): string {
+  // HTML src/href attributes for local assets.
+  let result = source.replace(
+    /\b(src|href)=(["'])([^"']+)\2/gi,
+    (full, attribute, quote, reference) => {
+      const dataUrl = resolvePreviewAsset(
+        project,
+        reference,
+        baseDirectory
+      );
+
+      return dataUrl
+        ? `${attribute}=${quote}${dataUrl}${quote}`
+        : full;
+    }
+  );
+
+  // CSS url(...) references, including images and fonts.
+  result = result.replace(
+    /url\(\s*(["']?)([^)"']+)\1\s*\)/gi,
+    (full, quote, reference) => {
+      const dataUrl = resolvePreviewAsset(
+        project,
+        reference,
+        baseDirectory
+      );
+
+      return dataUrl
+        ? `url(${quote}${dataUrl}${quote})`
+        : full;
+    }
+  );
+
+  return result;
+}
+
 
 function buildPreviewHtml(
   project: Project
@@ -3246,42 +3542,46 @@ function buildPreviewHtml(
   const htmlFile =
     project.files.find(
       file =>
-        file.name
-          .toLowerCase() ===
-        "index.html"
+        file.name.toLowerCase() === "index.html"
+    ) ??
+    project.files.find(
+      file =>
+        file.name.toLowerCase() === "index.htm"
     );
 
-  const css =
-    project.files
-      .filter(
-        file =>
-          file.name
-            .toLowerCase()
-            .endsWith(".css")
+  const css = project.files
+    .filter(
+      file =>
+        !file.isBinary &&
+        file.name.toLowerCase().endsWith(".css")
+    )
+    .map(file =>
+      replacePreviewAssets(
+        project,
+        file.content,
+        getParentPath(file.name)
       )
-      .map(
-        file =>
-          file.content
-      )
-      .join("\n");
+    )
+    .join("\n");
 
-  const js =
-    project.files
-      .filter(
-        file =>
-          file.name
-            .toLowerCase()
-            .endsWith(".js")
-      )
-      .map(
-        file =>
-          file.content
-      )
-      .join("\n");
+  const js = project.files
+    .filter(
+      file =>
+        !file.isBinary &&
+        (file.name.toLowerCase().endsWith(".js") ||
+         file.name.toLowerCase().endsWith(".mjs") ||
+         file.name.toLowerCase().endsWith(".cjs"))
+    )
+    .map(file => file.content)
+    .join("\n");
 
-  const html =
-    htmlFile?.content ??
-    "";
+  const html = htmlFile
+    ? replacePreviewAssets(
+        project,
+        htmlFile.content,
+        getParentPath(htmlFile.name)
+      )
+    : "";
 
   return `<!doctype html>
 
@@ -3333,7 +3633,6 @@ document.body.insertAdjacentHTML(
 
 </html>`;
 }
-
 
 function updatePreview() {
   const project =
@@ -3456,18 +3755,80 @@ function downloadFile(
    DOWNLOAD CURRENT FILE
    ========================= */
 
+function downloadBinaryFile(
+  filename: string,
+  dataUrl: string,
+  mimeType = "application/octet-stream"
+) {
+  const comma = dataUrl.indexOf(",");
+
+  if (comma === -1) {
+    downloadFile(filename, dataUrl);
+    return;
+  }
+
+  const metadata = dataUrl.slice(0, comma);
+  const data = dataUrl.slice(comma + 1);
+  const isBase64 = metadata.includes(";base64");
+
+  if (!isBase64) {
+    const blob = new Blob(
+      [decodeURIComponent(data)],
+      { type: mimeType }
+    );
+
+    downloadBlob(filename, blob);
+    return;
+  }
+
+  const binary = atob(data);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let index = 0; index < binary.length; index++) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  downloadBlob(
+    filename,
+    new Blob([bytes], { type: mimeType })
+  );
+}
+
+
+function downloadBlob(
+  filename: string,
+  blob: Blob
+) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+
 function downloadCurrentFile() {
-  const file =
-    getActiveFile();
+  const file = getActiveFile();
 
   if (!file) {
     return;
   }
 
+  if (file.isBinary) {
+    downloadBinaryFile(
+      getBaseName(file.name),
+      file.content,
+      file.mimeType
+    );
+    return;
+  }
+
   downloadFile(
-    getBaseName(
-      file.name
-    ),
+    getBaseName(file.name),
     file.content
   );
 }
@@ -3490,7 +3851,7 @@ function downloadProject() {
       true,
 
     version:
-      3,
+      4,
 
     project: {
       name:
