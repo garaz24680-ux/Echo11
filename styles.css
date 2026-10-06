@@ -9,11 +9,18 @@
   font-synthesis: none;
 }
 
+html {
+  min-width: 320px;
+  min-height: 100%;
+  background: #0d1117;
+}
+
 body {
   margin: 0;
   min-width: 320px;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: #0d1117;
 }
 
@@ -26,10 +33,17 @@ button {
   color: inherit;
 }
 
+/* =========================
+   EDITOR SHELL
+   ========================= */
+
 .shell {
   display: grid;
-  grid-template-columns: 245px 1fr;
+  grid-template-columns: 245px minmax(0, 1fr);
+  width: 100%;
   height: 100vh;
+  min-height: 0;
+  overflow: hidden;
   background: #0d1117;
 }
 
@@ -37,6 +51,8 @@ button {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   border-right: 1px solid #21262d;
   background: #0b0f14;
 }
@@ -46,6 +62,7 @@ button {
   align-items: center;
   gap: 11px;
   height: 68px;
+  min-height: 68px;
   padding: 0 18px;
   border-bottom: 1px solid #21262d;
 }
@@ -104,7 +121,11 @@ button {
   display: flex;
   flex-direction: column;
   gap: 3px;
+  max-height: 180px;
+  flex: 0 0 auto;
+  min-height: 0;
   padding: 0 10px;
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
@@ -174,10 +195,16 @@ button {
   box-shadow: 0 0 8px rgba(63, 185, 80, .45);
 }
 
+/* =========================
+   WORKSPACE
+   ========================= */
+
 .workspace {
   display: flex;
   min-width: 0;
+  min-height: 0;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .topbar {
@@ -185,6 +212,7 @@ button {
   align-items: center;
   justify-content: space-between;
   height: 68px;
+  min-height: 68px;
   padding: 0 20px;
   border-bottom: 1px solid #21262d;
   background: #0d1117;
@@ -235,11 +263,17 @@ button {
   color: #ff7b72;
 }
 
+/* =========================
+   EDITOR / PREVIEW
+   ========================= */
+
 .editor-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 48%);
+  min-width: 0;
   min-height: 0;
   flex: 1;
+  overflow: hidden;
 }
 
 .editor-panel,
@@ -248,6 +282,7 @@ button {
   min-width: 0;
   min-height: 0;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .editor-panel {
@@ -267,9 +302,30 @@ button {
 .tabs {
   display: flex;
   align-self: stretch;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #30363d transparent;
+}
+
+.tabs::-webkit-scrollbar {
+  height: 5px;
+}
+
+.tabs::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tabs::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  background: #30363d;
 }
 
 .tab {
+  flex: 0 0 auto;
+  max-width: 190px;
+  overflow: hidden;
   padding: 0 14px;
   border: 0;
   border-right: 1px solid #21262d;
@@ -277,6 +333,8 @@ button {
   background: transparent;
   color: #6e7681;
   font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -294,17 +352,88 @@ button {
   padding-right: 13px;
   color: #6e7681;
   font-size: 10px;
+  white-space: nowrap;
 }
+
+/* =========================
+   CODE EDITOR
+   ========================= */
 
 .editor {
   position: relative;
-  display: grid;
-  grid-template-columns: 48px minmax(0, 1fr);
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
   min-height: 0;
   flex: 1;
   overflow: hidden;
   background: #0d1117;
 }
+
+#codeEditor {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#codeEditor .cm-editor {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background: #0d1117;
+}
+
+#codeEditor .cm-scroller {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+#codeEditor .cm-content {
+  min-height: 100%;
+  padding: 15px 18px;
+  color: #c9d1d9;
+  caret-color: #58a6ff;
+}
+
+#codeEditor .cm-line {
+  color: #c9d1d9;
+}
+
+#codeEditor .cm-gutters {
+  min-width: 48px;
+  background: #0d1117;
+  color: #484f58;
+  border-right: 1px solid #161b22;
+}
+
+#codeEditor .cm-gutterElement {
+  padding-left: 8px;
+  padding-right: 11px;
+}
+
+#codeEditor .cm-activeLine {
+  background: rgba(88, 166, 255, 0.04);
+}
+
+#codeEditor .cm-activeLineGutter {
+  background: #161b22;
+}
+
+#codeEditor .cm-selectionBackground {
+  background: rgba(56, 139, 253, 0.25) !important;
+}
+
+#codeEditor .cm-cursor {
+  border-left-color: #58a6ff;
+}
+
+/* =========================
+   OLD EDITOR FALLBACK
+   ========================= */
 
 .line-numbers {
   overflow: hidden;
@@ -318,29 +447,17 @@ button {
 
 .line-numbers span {
   display: block;
-  padding-right: 11px;
   height: 21.45px;
-}
-
-#codeEditor {
-  width: 100%;
-  height: 100%;
-  resize: none;
-  outline: none;
-  border: 0;
-  padding: 15px 18px;
-  overflow: auto;
-  background: transparent;
-  color: #c9d1d9;
-  caret-color: #58a6ff;
-  font: 13px/1.65 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  tab-size: 2;
-  white-space: pre;
+  padding-right: 11px;
 }
 
 #codeEditor::selection {
   background: rgba(56, 139, 253, .25);
 }
+
+/* =========================
+   PREVIEW
+   ========================= */
 
 .preview-title {
   display: flex;
@@ -351,60 +468,336 @@ button {
   font-size: 12px;
 }
 
+.preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 7px;
+}
+
+.preview-action-button,
 .refresh-button {
-  margin-right: 10px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
   border: 0;
+  border-radius: 6px;
   background: transparent;
   color: #8b949e;
-  font-size: 19px;
   cursor: pointer;
 }
 
+.preview-action-button {
+  font-size: 18px;
+}
+
+.refresh-button {
+  margin-right: 0;
+  font-size: 19px;
+}
+
+.preview-action-button:hover,
 .refresh-button:hover {
+  background: #161b22;
   color: #f0f6fc;
 }
 
 #preview {
   width: 100%;
   height: 100%;
+  min-height: 0;
+  flex: 1;
   border: 0;
   background: white;
 }
 
-@media (max-width: 800px) {
-  .shell {
-    grid-template-columns: 190px 1fr;
-  }
-
-  .editor-layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr 1fr;
-  }
-
-  .editor-panel {
-    border-right: 0;
-    border-bottom: 1px solid #21262d;
-  }
-
-  .top-actions {
-    display: none;
-  }
+#preview:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  background: white;
 }
 
-@media (max-width: 560px) {
-  .shell {
-    grid-template-columns: 1fr;
-  }
+/* =========================
+   FILE CONTROLS
+   ========================= */
 
-  .sidebar {
-    display: none;
-  }
+.add-file-button,
+.delete-file-button,
+.rename-file-button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  margin: 0 2px;
+  padding: 0;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #161b22;
+  color: #8b949e;
+  cursor: pointer;
 }
+
+.add-file-button {
+  font-size: 18px;
+}
+
+.delete-file-button {
+  font-size: 18px;
+}
+
+.rename-file-button {
+  font-size: 14px;
+}
+
+.add-file-button:hover {
+  border-color: #388bfd;
+  color: #58a6ff;
+}
+
+.delete-file-button:hover {
+  border-color: #f85149;
+  color: #ff7b72;
+}
+
+.rename-file-button:hover {
+  border-color: #388bfd;
+  color: #58a6ff;
+}
+
+/* =========================
+   ECHO11 FILE EXPLORER
+   ========================= */
+
+.explorer-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 18px 14px 7px 18px;
+  color: #6e7681;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+
+.explorer-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tree-action-button {
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: transparent;
+  color: #8b949e;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tree-action-button:hover {
+  border-color: #388bfd;
+  background: #161b22;
+  color: #58a6ff;
+}
+
+.tree-action-button:first-child,
+.tree-action-button:last-child {
+  font-size: 11px;
+}
+
+/* =========================
+   EXPLORER TOOLBAR
+   ========================= */
+
+.explorer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 31px;
+  padding: 0 10px 5px;
+}
+
+.explorer-toolbar button {
+  width: 27px;
+  height: 25px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: #6e7681;
+  cursor: pointer;
+}
+
+.explorer-toolbar button:hover {
+  border-color: #30363d;
+  background: #161b22;
+  color: #f0f6fc;
+}
+
+#deleteTreeItem:hover {
+  border-color: #f85149;
+  color: #ff7b72;
+}
+
+/* =========================
+   FILE TREE
+   ========================= */
+
+.file-tree {
+  min-height: 100px;
+  flex: 1;
+  padding: 0 6px 8px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #30363d transparent;
+}
+
+.file-tree::-webkit-scrollbar {
+  width: 7px;
+}
+
+.file-tree::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.file-tree::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  background: #30363d;
+}
+
+.tree-folder {
+  width: 100%;
+}
+
+.tree-children {
+  width: 100%;
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  height: 27px;
+  padding: 0 7px 0 3px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: #8b949e;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tree-row:hover {
+  background: #161b22;
+  color: #f0f6fc;
+}
+
+.tree-row.selected {
+  border-color: #30363d;
+  background: #1b222c;
+  color: #f0f6fc;
+}
+
+.tree-folder-row.selected {
+  color: #f0f6fc;
+}
+
+.tree-chevron {
+  display: inline-grid;
+  width: 15px;
+  height: 18px;
+  flex: 0 0 15px;
+  place-items: center;
+  color: #6e7681;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.tree-icon {
+  display: inline-grid;
+  width: 22px;
+  height: 20px;
+  flex: 0 0 22px;
+  place-items: center;
+  font-size: 13px;
+}
+
+.tree-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.tree-indent {
+  display: flex;
+  align-self: stretch;
+}
+
+.indent-space {
+  display: block;
+  width: 15px;
+  flex: 0 0 15px;
+}
+
+.tree-file-spacer {
+  display: block;
+  width: 15px;
+  flex: 0 0 15px;
+}
+
+/* =========================
+   FOLDER COLORS / STATES
+   ========================= */
+
+.tree-folder-row .tree-icon {
+  filter: saturate(.8);
+}
+
+.tree-folder-row:hover .tree-icon,
+.tree-folder-row.selected .tree-icon {
+  filter: saturate(1);
+}
+
+.tree-file-row.selected .tree-icon {
+  transform: translateY(-.5px);
+}
+
+.tree-row.selected .tree-name {
+  color: #f0f6fc;
+}
+
+.tree-row.selected .tree-chevron {
+  color: #58a6ff;
+}
+
+/* =========================
+   EMPTY EXPLORER
+   ========================= */
+
+.file-tree:empty::after {
+  content: "No files";
+  display: block;
+  padding: 12px 10px;
+  color: #484f58;
+  font-size: 11px;
+}
+
 /* =========================
    HOME PAGE
    ========================= */
 
 .home-shell {
+  width: 100%;
   min-height: 100vh;
   background:
     radial-gradient(
@@ -414,6 +807,7 @@ button {
     ),
     #0d1117;
   color: #f0f6fc;
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
@@ -422,6 +816,7 @@ button {
   align-items: center;
   justify-content: space-between;
   height: 68px;
+  min-height: 68px;
   padding: 0 28px;
   border-bottom: 1px solid #21262d;
   background: rgba(13, 17, 23, .9);
@@ -650,10 +1045,36 @@ button {
 }
 
 /* =========================
-   RESPONSIVE HOME PAGE
+   RESPONSIVE
    ========================= */
 
 @media (max-width: 800px) {
+  .shell {
+    grid-template-columns: 190px minmax(0, 1fr);
+  }
+
+  .editor-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+
+  .editor-panel {
+    border-right: 0;
+    border-bottom: 1px solid #21262d;
+  }
+
+  .project-list {
+    max-height: 125px;
+  }
+
+  .file-tree {
+    min-height: 80px;
+  }
+
+  .tree-row {
+    height: 29px;
+  }
+
   .home-content {
     padding-top: 50px;
   }
@@ -691,6 +1112,14 @@ button {
 }
 
 @media (max-width: 560px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
   .home-content {
     width: min(100% - 28px, 1050px);
   }
@@ -699,502 +1128,4 @@ button {
     text-align: center;
     flex-wrap: wrap;
   }
-}
-.preview-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-right: 7px;
-}
-
-.preview-action-button,
-.refresh-button {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: #8b949e;
-  cursor: pointer;
-}
-
-.preview-action-button {
-  font-size: 18px;
-}
-
-.refresh-button {
-  margin-right: 0;
-  font-size: 19px;
-}
-
-.preview-action-button:hover,
-.refresh-button:hover {
-  background: #161b22;
-  color: #f0f6fc;
-}
-
-#preview:fullscreen {
-  width: 100vw;
-  height: 100vh;
-  background: white;
-}
-/* =========================
-   FILE CONTROLS
-   ========================= */
-
-.add-file-button,
-.delete-file-button,
-.rename-file-button {
-  width: 28px;
-  height: 28px;
-  flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  margin: 0 2px;
-  padding: 0;
-  border: 1px solid #30363d;
-  border-radius: 6px;
-  background: #161b22;
-  color: #8b949e;
-  cursor: pointer;
-}
-
-.add-file-button {
-  font-size: 18px;
-}
-
-.delete-file-button {
-  font-size: 18px;
-}
-
-.rename-file-button {
-  font-size: 14px;
-}
-
-.add-file-button:hover {
-  border-color: #388bfd;
-  color: #58a6ff;
-}
-
-.delete-file-button:hover {
-  border-color: #f85149;
-  color: #ff7b72;
-}
-
-.rename-file-button:hover {
-  border-color: #388bfd;
-  color: #58a6ff;
-}
-
-/* Make lots of file tabs scroll instead of breaking the editor */
-
-.tabs {
-  min-width: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-
-.tab {
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-/* =========================
-   CODEMIRROR FIX
-   ========================= */
-
-.editor {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 100%;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-  background: #0d1117;
-}
-
-#codeEditor {
-  width: 100%;
-  height: 100%;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-}
-
-#codeEditor .cm-editor {
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  background: #0d1117;
-}
-
-#codeEditor .cm-scroller {
-  width: 100%;
-  height: 100%;
-  overflow: auto;
-}
-
-#codeEditor .cm-content {
-  min-height: 100%;
-  padding: 15px 18px;
-  color: #c9d1d9;
-  caret-color: #58a6ff;
-}
-
-#codeEditor .cm-line {
-  color: #c9d1d9;
-}
-
-#codeEditor .cm-gutters {
-  min-width: 48px;
-  background: #0d1117;
-  color: #484f58;
-  border-right: 1px solid #161b22;
-}
-
-#codeEditor .cm-gutterElement {
-  padding-left: 8px;
-  padding-right: 11px;
-}
-
-#codeEditor .cm-activeLine {
-  background: rgba(88, 166, 255, 0.04);
-}
-
-#codeEditor .cm-activeLineGutter {
-  background: #161b22;
-}
-
-#codeEditor .cm-selectionBackground {
-  background: rgba(56, 139, 253, 0.25) !important;
-}
-
-#codeEditor .cm-cursor {
-  border-left-color: #58a6ff;
-}
-/* =========================
-   ECHO11 FILE EXPLORER
-   ========================= */
-
-.explorer-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 18px 14px 7px 18px;
-  color: #6e7681;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: .12em;
-}
-
-.explorer-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.tree-action-button {
-  width: 25px;
-  height: 25px;
-  padding: 0;
-  border: 1px solid #30363d;
-  border-radius: 6px;
-  background: transparent;
-  color: #8b949e;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.tree-action-button:hover {
-  border-color: #388bfd;
-  background: #161b22;
-  color: #58a6ff;
-}
-
-
-/* =========================
-   EXPLORER TOOLBAR
-   ========================= */
-
-.explorer-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 31px;
-  padding: 0 10px 5px;
-}
-
-.explorer-toolbar button {
-  width: 27px;
-  height: 25px;
-  padding: 0;
-  border: 1px solid transparent;
-  border-radius: 5px;
-  background: transparent;
-  color: #6e7681;
-  cursor: pointer;
-}
-
-.explorer-toolbar button:hover {
-  border-color: #30363d;
-  background: #161b22;
-  color: #f0f6fc;
-}
-
-#deleteTreeItem:hover {
-  border-color: #f85149;
-  color: #ff7b72;
-}
-
-
-/* =========================
-   FILE TREE
-   ========================= */
-
-.file-tree {
-  min-height: 0;
-  flex: 1;
-  padding: 0 6px 8px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #30363d transparent;
-}
-
-.file-tree::-webkit-scrollbar {
-  width: 7px;
-}
-
-.file-tree::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.file-tree::-webkit-scrollbar-thumb {
-  border-radius: 5px;
-  background: #30363d;
-}
-
-.tree-folder {
-  width: 100%;
-}
-
-.tree-children {
-  width: 100%;
-}
-
-.tree-row {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  min-width: 0;
-  height: 27px;
-  padding: 0 7px 0 3px;
-  border: 1px solid transparent;
-  border-radius: 5px;
-  background: transparent;
-  color: #8b949e;
-  text-align: left;
-  cursor: pointer;
-}
-
-.tree-row:hover {
-  background: #161b22;
-  color: #f0f6fc;
-}
-
-.tree-row.selected {
-  background: #1b222c;
-  border-color: #30363d;
-  color: #f0f6fc;
-}
-
-.tree-folder-row.selected {
-  color: #f0f6fc;
-}
-
-.tree-chevron {
-  display: inline-grid;
-  width: 15px;
-  height: 18px;
-  flex: 0 0 15px;
-  place-items: center;
-  color: #6e7681;
-  font-size: 15px;
-  line-height: 1;
-}
-
-.tree-icon {
-  display: inline-grid;
-  width: 22px;
-  height: 20px;
-  flex: 0 0 22px;
-  place-items: center;
-  font-size: 13px;
-}
-
-.tree-name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 12px;
-}
-
-.tree-indent {
-  display: flex;
-  align-self: stretch;
-}
-
-.indent-space {
-  display: block;
-  width: 15px;
-  flex: 0 0 15px;
-}
-
-.tree-file-spacer {
-  display: block;
-  width: 15px;
-  flex: 0 0 15px;
-}
-
-
-/* =========================
-   FOLDER COLORS / STATES
-   ========================= */
-
-.tree-folder-row .tree-icon {
-  filter: saturate(.8);
-}
-
-.tree-folder-row:hover .tree-icon,
-.tree-folder-row.selected .tree-icon {
-  filter: saturate(1);
-}
-
-.tree-file-row.selected .tree-icon {
-  transform: translateY(-.5px);
-}
-
-
-/* =========================
-   SIDEBAR SCROLLING
-   ========================= */
-
-.sidebar {
-  min-height: 0;
-}
-
-.project-list {
-  max-height: 180px;
-  flex: 0 0 auto;
-}
-
-.file-tree {
-  min-height: 100px;
-}
-
-
-/* =========================
-   RESPONSIVE EXPLORER
-   ========================= */
-
-@media (max-width: 800px) {
-  .project-list {
-    max-height: 125px;
-  }
-
-  .file-tree {
-    min-height: 80px;
-  }
-
-  .tree-row {
-    height: 29px;
-  }
-}
-
-
-/* =========================
-   MOBILE
-   ========================= */
-
-@media (max-width: 560px) {
-  .sidebar {
-    display: none;
-  }
-}
-
-
-/* =========================
-   IMPROVED TABS
-   ========================= */
-
-.tabs {
-  min-width: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: #30363d transparent;
-}
-
-.tabs::-webkit-scrollbar {
-  height: 5px;
-}
-
-.tabs::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.tabs::-webkit-scrollbar-thumb {
-  border-radius: 5px;
-  background: #30363d;
-}
-
-.tab {
-  flex: 0 0 auto;
-  max-width: 190px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-
-/* =========================
-   EXPLORER BUTTON POLISH
-   ========================= */
-
-.tree-action-button:first-child {
-  font-size: 11px;
-}
-
-.tree-action-button:last-child {
-  font-size: 11px;
-}
-
-
-/* =========================
-   SELECTED TREE ITEM
-   ========================= */
-
-.tree-row.selected .tree-name {
-  color: #f0f6fc;
-}
-
-.tree-row.selected .tree-chevron {
-  color: #58a6ff;
-}
-
-
-/* =========================
-   EMPTY EXPLORER SPACE
-   ========================= */
-
-.file-tree:empty::after {
-  content: "No files";
-  display: block;
-  padding: 12px 10px;
-  color: #484f58;
-  font-size: 11px;
 }
