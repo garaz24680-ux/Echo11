@@ -36,6 +36,29 @@ import {
 
 
 /* =========================
+   BOTPRESS TYPES
+   ========================= */
+
+interface Echo11Botpress {
+  open: () => void;
+  close: () => void;
+  toggle: () => void;
+  sendMessage: (message: string) => Promise<void>;
+  sendEvent: (event: Record<string, unknown>) => Promise<void>;
+  on: (
+    event: string,
+    callback: (...args: any[]) => void
+  ) => (() => void) | void;
+}
+
+declare global {
+  interface Window {
+    botpress?: Echo11Botpress;
+  }
+}
+
+
+/* =========================
    TYPES
    ========================= */
 
@@ -2187,6 +2210,139 @@ async function handleHomeUpload(
 }
 
 /* =========================
+   ECHO11 AI
+   ========================= */
+
+let botpressReady = false;
+let botpressListenersAttached = false;
+
+function setupBotpress() {
+  if (!window.botpress || botpressListenersAttached) {
+    return;
+  }
+
+  botpressListenersAttached = true;
+
+  window.botpress.on(
+    "webchat:ready",
+    () => {
+      botpressReady = true;
+    }
+  );
+}
+
+function getProjectCodeForAI(project: Project): string {
+  return project.files
+    .filter(file => !file.isBinary)
+    .map(file =>
+      `--- ${file.name} ---\n${file.content}`
+    )
+    .join("\n\n");
+}
+
+async function askEcho11AI() {
+  const project = getActiveProject();
+  const file = getActiveFile();
+
+  if (!project || !file) {
+    return;
+  }
+
+  // Save the exact text currently visible in CodeMirror first.
+  if (editorView && !file.isBinary) {
+    file.content = editorView.state.doc.toString();
+    project.updatedAt = Date.now();
+    saveProjects();
+  }
+
+  const botpress = window.botpress;
+
+  if (!botpress) {
+    alert(
+      "Echo11 AI is still loading. Please wait a moment and try again."
+    );
+    return;
+  }
+
+  setupBotpress();
+
+  const code = getProjectCodeForAI(project);
+
+  const message = [
+    "You are Echo11 AI, the coding assistant built into the Echo11 code editor.",
+    "",
+    `Project: ${project.name}`,
+    `Currently open file: ${file.name}`,
+    "",
+    "The following is the user's current project source code:",
+    "",
+    code,
+    "",
+    "Help the user with the currently open file first. Find real bugs, explain the problem clearly, and provide corrected code or an exact patch when useful.",
+    "Do not claim that you directly changed the user's Echo11 files. The user must apply your suggested changes.",
+    "Preserve the existing design and functionality unless the user asks for a redesign.",
+    "If the code is already correct, say so rather than inventing a problem."
+  ].join("\n");
+
+  try {
+    if (botpressReady) {
+      botpress.open();
+      await botpress.sendMessage(message);
+      return;
+    }
+
+    let sent = false;
+    let unsubscribe: (() => void) | undefined;
+
+    const sendWhenReady = async () => {
+      if (sent) {
+        return;
+      }
+
+      sent = true;
+      botpressReady = true;
+      unsubscribe?.();
+
+      try {
+        await botpress.sendMessage(message);
+      } catch (error) {
+        console.error("Echo11 AI message failed:", error);
+      }
+    };
+
+    const result = botpress.on(
+      "webchat:ready",
+      sendWhenReady
+    );
+
+    if (typeof result === "function") {
+      unsubscribe = result;
+    }
+
+    botpress.open();
+
+    // If Webchat was already ready but the ready event happened before
+    // this button was clicked, give Botpress a moment and send directly.
+    window.setTimeout(async () => {
+      if (!sent && window.botpress) {
+        try {
+          sent = true;
+          botpressReady = true;
+          unsubscribe?.();
+          await botpress.sendMessage(message);
+        } catch (error) {
+          console.error("Echo11 AI message failed:", error);
+        }
+      }
+    }, 800);
+  } catch (error) {
+    console.error("Could not contact Echo11 AI:", error);
+    alert("Echo11 AI could not be opened. Check that the Botpress Webchat is published.");
+  }
+}
+
+
+/* =========================
    EDITOR PAGE
    ========================= */
 
@@ -2408,6 +2564,13 @@ function renderEditor() {
 
 
           <div class="top-actions">
+
+            <button
+              class="top-button ai-button"
+              id="askEcho11AI"
+            >
+              ✦ Ask Echo11 AI
+            </button>
 
             <button
               class="top-button"
@@ -3236,6 +3399,16 @@ function wireEditorEvents() {
 
         render();
       }
+    );
+
+
+  document
+    .querySelector(
+      "#askEcho11AI"
+    )
+    ?.addEventListener(
+      "click",
+      askEcho11AI
     );
 
 
