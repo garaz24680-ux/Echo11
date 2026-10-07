@@ -907,3 +907,289 @@ button {
 .bpWebchat {
   z-index: 9999 !important;
 }
+/* =========================
+   ECHO11 UI POLISH
+   ========================= */
+
+button,
+a,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  transition:
+    background-color .15s ease,
+    border-color .15s ease,
+    color .15s ease,
+    box-shadow .15s ease,
+    transform .15s ease;
+}
+
+button:focus-visible {
+  outline: 2px solid #58a6ff;
+  outline-offset: 2px;
+}
+
+.brand-logo {
+  box-shadow: 0 0 0 1px rgba(88, 166, 255, .12), 0 4px 18px rgba(0, 0, 0, .28);
+}
+
+.brand strong {
+  letter-spacing: -.01em;
+}
+
+.project-item {
+  transition:
+    background-color .15s ease,
+    border-color .15s ease,
+    color .15s ease,
+    transform .15s ease;
+}
+
+.project-item:hover {
+  transform: translateX(1px);
+}
+
+.topbar {
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .015);
+}
+
+.top-button {
+  white-space: nowrap;
+}
+
+.top-button:active,
+.primary-button:active,
+.secondary-button:active,
+.home-new-button:active {
+  transform: translateY(1px);
+}
+
+.ai-button {
+  background: rgba(88, 166, 255, .055);
+  box-shadow: inset 0 0 0 1px rgba(88, 166, 255, .035);
+}
+
+.ai-button:hover {
+  box-shadow: 0 0 18px rgba(88, 166, 255, .08);
+}
+
+.panel-header {
+  position: relative;
+  z-index: 1;
+}
+
+.tabs {
+  scrollbar-width: thin;
+  scrollbar-color: #30363d transparent;
+}
+
+.tabs::-webkit-scrollbar {
+  height: 5px;
+}
+
+.tabs::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tabs::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #30363d;
+}
+
+.tab {
+  position: relative;
+  min-width: 78px;
+}
+
+.tab.active::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -2px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: #58a6ff;
+  box-shadow: 0 0 8px rgba(88, 166, 255, .35);
+}
+
+.tab.active {
+  border-bottom-color: transparent;
+}
+
+.saved-label {
+  white-space: nowrap;
+}
+
+.editor-panel,
+.preview-panel {
+  background: #0d1117;
+}
+
+.preview-panel {
+  position: relative;
+}
+
+.preview-panel #preview {
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, .03);
+}
+
+.preview-action-button:focus-visible,
+.refresh-button:focus-visible,
+.icon-button:focus-visible,
+.add-file-button:focus-visible,
+.delete-file-button:focus-visible,
+.rename-file-button:focus-visible {
+  outline-offset: -2px;
+}
+
+.home-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.home-shell::before {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  top: -220px;
+  left: 50%;
+  width: 760px;
+  height: 500px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(56, 139, 253, .075),
+    transparent 68%
+  );
+  pointer-events: none;
+}
+
+.home-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.home-new-button {
+  transition:
+    background-color .15s ease,
+    border-color .15s ease,
+    color .15s ease,
+    transform .15s ease;
+}
+
+.home-hero h1 {
+  text-wrap: balance;
+}
+
+.home-hero > p:not(.home-eyebrow) {
+  text-wrap: pretty;
+}
+
+.home-project-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.home-project-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  background: #58a6ff;
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+
+.home-project-card:hover::before {
+  opacity: 1;
+}
+
+.home-project-card:hover {
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .18);
+}
+
+.home-footer {
+  margin-top: 10px;
+}
+
+/* Better small-screen editor controls */
+@media (max-width: 800px) {
+  .topbar {
+    height: 58px;
+    padding: 0 12px;
+  }
+
+  .breadcrumbs {
+    font-size: 12px;
+  }
+
+  .editor-layout {
+    min-height: calc(100vh - 58px);
+  }
+
+  .panel-header {
+    height: 42px;
+    min-height: 42px;
+  }
+
+  .saved-label {
+    padding-right: 9px;
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 560px) {
+  .topbar {
+    padding: 0 10px;
+  }
+
+  .breadcrumbs span:first-child,
+  .breadcrumbs .slash {
+    display: none;
+  }
+
+  .breadcrumbs strong {
+    max-width: 42vw;
+  }
+
+  .home-topbar {
+    height: 60px;
+    padding: 0 14px;
+  }
+
+  .home-content {
+    padding-top: 42px;
+  }
+
+  .home-hero h1 {
+    letter-spacing: -.045em;
+  }
+
+  .home-project-card {
+    min-height: 72px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
